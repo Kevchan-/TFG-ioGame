@@ -11,6 +11,7 @@ class Player{
 		this.serverSprite = {};		//debug server sprite position
 		this.inputs = [];	//serverside
 		this.pendingInputs = [];	//inputs for when we reconciliate with server, clientside only
+		this.pendingIterationDeltaTimes = [];	//for reconciliation. Since we don't store inputs that don't change the destination tile, we need to store the deltaTimes of every iteration here
 		this.lastInputSequenceNumber = 0;
 		this.isSelf = isSelf;
 		this.state = 'not connected';	
@@ -56,6 +57,43 @@ class Player{
 		this.inputs.push(input);
 	}
 
+	//process messages from server reggarding our position. do server reconciliation
+	ClientServerReconciliation(netUpdates){
+		//test on net
+	
+		var latestUpdate = netUpdates[netUpdates.length-1];
+		var myServerPos = latestUpdate[this.id].pos;
+		var serverSequence = latestUpdate[this.id].inputSequence;	
+
+		var auxPos = this.pos;	//to check if positions match after the reconciliation
+
+
+		var i = 0;
+		while(i < this.pendingInputs.length){
+			if(this.pendingInputs[i].sequence >= serverSequence && this.pendingInputs[i].reached){
+				this.pos = myServerPos;
+				this.moving = latestUpdate[this.id].moving;
+				this.destination = latestUpdate[this.id].destination;				
+
+				var input = this.pendingInputs[i];
+				this.ApplyInput(input);
+				//get delta time
+				for(var j = 0; j < this.pendingIterationDeltaTimes[input.sequence].length; j++){
+					var deltaTime = this.pendingIterationDeltaTimes[input.sequence][j];
+					this.UpdatePhysics(deltaTime);
+					i++;					
+				}
+
+			}
+			else{
+				this.pendingInputs.splice(i, 1);
+			}
+		}
+
+		console.log("Client position: "+auxPos.x+", "+auxPos.y);
+		console.log("Reconc position: "+this.pos.x+", "+this.pos.y);
+	}
+
 	ClientProcessInputs(socket, time){	//we check the current inputs to store them for later reconciliation and send them to the server right now
 		//if we have cliendside prediction enabled we'll move the char as we check the inputs right here
 		var now = new Date().getTime()/1000.0;
@@ -92,7 +130,7 @@ class Player{
 			var serialized = JSON.stringify(input);
 			serialized = "i."+serialized;
 			this.game.socket.send(serialized);
-//			this.pendingInputs.push(input);
+			this.pendingInputs.push(input);
 		}
 	}
 
@@ -126,12 +164,16 @@ class Player{
 		var newDestination = false;
 		if(this.moving){
 			if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){	//if we already reached 
+				this.reached = true;
 				this.moving = false;	//then don't move at all this frame and mark as not moving
-				if(input.key !== "n"){	//if we're not moving check for input that tells us to move
+				if(input.key !== "n"){	//check for input the same frame so that we don't stop
 					this.destination = this.GetDestination(input.key);
 					this.moving = true;
 					newDestination = true;
 				}				
+			}
+			else{	//we not there
+				this.reached = false;
 			}
 		}
 		else{
@@ -148,6 +190,15 @@ class Player{
 	UpdatePhysics(deltaTime){
 		if(this.moving){
 			this.MoveToTile(this.destination, deltaTime);
+			//store the deltaTimes for server reconciliation
+			if(!this.pendingIterationDeltaTimes[this.lastInputSequenceNumber]){
+				this.pendingIterationDeltaTimes[this.lastInputSequenceNumber] = [];
+			}
+			this.pendingIterationDeltaTimes[this.lastInputSequenceNumber].push(deltaTime);
+
+			if(this.pendingIterationDeltaTimes.length >= 10){
+				this.pendingIterationDeltaTimes.splice(0, 1);
+			}			
 		}
 	}
 
@@ -235,7 +286,7 @@ class Player{
 			this.pos.x = simulatedPos.x;
 			this.pos.y = simulatedPos.y;
 		}else{
-			console.log("reached objective");
+	//		console.log("reached objective");
 			this.pos.x = tilePos.x;
 			this.pos.y = tilePos.y;
 		}

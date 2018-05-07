@@ -86,10 +86,15 @@ class GameCore{
 
 				state[playerid] = {};
 				state[playerid].pos = this.players[playerid].pos;
-				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;
+				state[playerid].destination = this.players[playerid].destination;
+				state[playerid].moving = this.players[playerid].moving;
+				state[playerid].reached = this.players[playerid].reached;
+				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;					
+
 			}
 		}
 		state.serverTime = serverTime;
+		state.serverDeltaTime = this.localDeltaTime;
 		this.lastState = state;
 
 		var serializedState = JSON.stringify(state);
@@ -112,6 +117,7 @@ class GameCore{
 		//process server messages
 		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime);
 		this.selfPlayer.UpdatePhysics(this.localDeltaTime);
+
 		this.ClientProcessNetUpdates();
 	}
 
@@ -129,8 +135,8 @@ class GameCore{
 					this.selfPlayer.SetServerPosition(debugPos);
 
 				for(var playerid in state){
-					if(state.hasOwnProperty(playerid) && playerid != this.selfPlayer.id){
-
+					if(this.players.hasOwnProperty(playerid) && playerid != this.selfPlayer.id){
+						this.players[playerid].SetPosition(state[playerid].pos);
 					}
 				}				
 			}
@@ -144,6 +150,8 @@ class GameCore{
 		if(this.serverUpdates.length >= 100){
 			this.serverUpdates.splice(0, 1);
 		}
+
+		this.selfPlayer.ClientServerReconciliation(this.serverUpdates);
 	}
 
 	ClientAddPlayer(clientId){
