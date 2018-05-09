@@ -34,12 +34,16 @@ function Create () {
     downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
     leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
     rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
-
 }
 
 function SetSpritePosition(sprite, pos){
     sprite.x = Math.round(pos.x*16);
     sprite.y = Math.round(pos.y*16);
+}
+
+function GetSpritePosition(sprite){
+    var pos = {};
+    pos.x = sprite.x/16;
 }
 
 function AddSprite(name, cords){

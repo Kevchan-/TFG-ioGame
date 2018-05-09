@@ -104,7 +104,7 @@ class Player{
 		var input = {};
 		input.key = "n";
 
-		if(this.game.input.activePointer.isDown){
+		if(game.input.activePointer.isDown){
 			input.key = 'd';
 		}
 		else{
@@ -320,6 +320,7 @@ class Player{
 		if(this.isSelf){
 			this.serverSprite = AddSprite('blue', cords);
 			this.sprite = AddSprite('red', cords);
+			game.camera.follow(this.sprite);
 		}
 		else{
 			this.sprite = AddSprite('blue', cords);
