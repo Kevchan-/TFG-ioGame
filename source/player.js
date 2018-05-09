@@ -68,7 +68,6 @@ class Player{
 
 		var auxPos = this.pos;	//to check if positions match after the reconciliation
 
-
 		var i = 0;
 		while(i < this.pendingInputs.length){
 			if(this.pendingInputs[i].sequence >= serverSequence && this.pendingInputs[i].reached){
@@ -96,7 +95,7 @@ class Player{
 	}
 
 	ClientProcessInputs(socket, time){	//we check the current inputs to store them for later reconciliation and send them to the server right now
-		//if we have cliendside prediction enabled we'll move the char as we check the inputs right here
+		//if we have cliendside prediction enabled we'll apply the input as we check the inputs right here
 		var now = new Date().getTime()/1000.0;
 		var deltaTime = now - this.lastUpdateTime || now; //if lastupdatetime doesn't exist yet just use the current date
 		this.lastUpdateTime = now;
@@ -104,9 +103,30 @@ class Player{
 		var input = {};
 		input.key = "n";
 
+//		game.debug.text(this.pos.x.toFixed(1)+", " +this.pos.y.toFixed(1), spritePos.x, spritePos.y);
+//		game.debug.text(spritePos.x+", " +spritePos.y, spritePos.x, spritePos.y);
+
 		if(game.input.activePointer.isDown){
-			input.key = 'd';
+		var spritePos = this.sprite.worldPosition;
+			var angle = GetAngle(spritePos, game.input.activePointer.position);
+//			game.debug.geom(point, 'rgba(255,255,0,1)');
+//			game.debug.text(game.input.activePointer.x+", " +game.input.activePointer.y, point.x, point.y);
+//			game.debug.text("Angle: "+angle, game.input.activePointer.x, game.input.activePointer.y);
+
+			if(angle >= -45 && angle <= 45){
+				input.key = "r";
+			}
+			else if(angle >=-135  && angle <= -45){
+				input.key = "u";
+			}
+			else if(angle >=45 && angle <=135){
+				input.key = "d"
+			}	
+			else{
+				input.key = "l";
+			}
 		}
+
 		else{
 			if(upKey.isDown){
 				input.key = 'u';

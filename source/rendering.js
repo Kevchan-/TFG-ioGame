@@ -43,7 +43,9 @@ function SetSpritePosition(sprite, pos){
 
 function GetSpritePosition(sprite){
     var pos = {};
-    pos.x = sprite.x/16;
+    pos.x = sprite.x;
+    pos.y = sprite.y;
+    return(pos);
 }
 
 function AddSprite(name, cords){
@@ -58,4 +60,12 @@ function DeleteSprite(sprite){
     var index = sprite.index;
     sprite.destroy();
 	objects.splice(index, 1);
+}
+
+function GetAngle(obj1, obj2) {
+// angle in radians
+var angleRadians = Math.atan2(obj2.y - obj1.y, obj2.x - obj1.x);
+// angle in degrees
+var angleDeg = (Math.atan2(obj2.y - obj1.y, obj2.x - obj1.x) * 180 / Math.PI);
+return angleDeg;
 }

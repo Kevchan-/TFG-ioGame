@@ -13,7 +13,7 @@ class GameRoom{
 		this.playerClients = {}; 	//create players in this array for clients who join
 		this.playerCount = 0;		//there's no players on the playerClients hashmap yet
 		this.active = false;
-		this.minPlayers = 2;		//player minimum to start the game
+		this.minPlayers = 1;		//player minimum to start the game
 
 		this.game = new gameCore(this);
 		this.gameServer = new gameServer(this);
@@ -233,7 +233,7 @@ var RoomServer = module.exports = {roomCount : 0, rooms : {}};
 	RoomServer.Disconnect = function(client){
 		client.room.RemovePlayer(client);
 		if(client.room.playerCount == 0){
-			this.DeleteRoom(room);
+			this.DeleteRoom(client.room);
 		}
 	}
 
