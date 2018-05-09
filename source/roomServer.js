@@ -221,12 +221,20 @@ var RoomServer = module.exports = {roomCount : 0, rooms : {}};
 //tell the client they're hosting now. s for server, h for hosting, followed by a string with the date
 	}
 
+	RoomServer.DeleteRoom = function(room){
+		delete this.rooms[room.id];
+		this.roomCount--;
+	}
+
 	RoomServer.OnMessage = function(socket, message){
 		socket.room.gameServer.OnMessage(socket, message);
 	}
 
 	RoomServer.Disconnect = function(client){
 		client.room.RemovePlayer(client);
+		if(client.room.playerCount == 0){
+			this.DeleteRoom(room);
+		}
 	}
 
 

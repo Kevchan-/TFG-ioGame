@@ -123,9 +123,6 @@ class Player{
 		}
 
 
-
-
-
 		var newDestination = this.ApplyInput(input);
 
 		if(newDestination){
