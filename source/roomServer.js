@@ -13,6 +13,7 @@ class GameRoom{
 		this.playerClients = {}; 	//create players in this array for clients who join
 		this.playerCount = 0;		//there's no players on the playerClients hashmap yet
 		this.active = false;
+		this.minPlayers = 2;		//player minimum to start the game
 
 		this.game = new gameCore(this);
 		this.gameServer = new gameServer(this);
@@ -34,7 +35,7 @@ class GameRoom{
 
 		this.OnPlayerJoin(newClient);
 
-		if(this.playerCount == 2){
+		if(this.playerCount == this.minPlayers && !this.active){
 			console.log("game starts");
 			this.StartGame();
 		}
@@ -64,6 +65,10 @@ class GameRoom{
 				}
 			}
 			client.send('j.'+existingIds);
+			if(this.active){
+				console.log("3d player starting");
+				this.StartGame(client);
+			}
 		}
 		else{	//it's just the first player (host) so nothing else needed
 			client.send('j.'+client.userid);
@@ -97,40 +102,67 @@ class GameRoom{
 		}
 		else{	//only a regular client left
 			delete this.playerClients[client.userid];
+			for(var player in this.playerClients){
+				if(this.playerClients.hasOwnProperty(player)){
+					this.playerClients[player].send('l.'+client.userid);
+				}
+			}
 		}
 
 		this.playerCount--;
-		if(this.playerCount < 2){
-			this.EndGame();
+		if(this.playerCount < this.minPlayers){
+		//	this.EndGame();
 		}
 		console.log("Player count: "+ this.playerCount+".");
 	}
 
-	StartGame(){
-		this.active = true;
-		this.game.ServerStartGame();
+	StartGame(newPlayer){
 		var playersState = {};
+		if(!newPlayer){	//if no new player is specified then its the first players needed for the game to start
+			this.active = true;
+			this.game.ServerStartGame();
 
-		for(var playerId in this.playerClients){
-			if(this.playerClients.hasOwnProperty(playerId)){
-				//get every player's starting position
-				var cords = {};
-				cords.x = Math.floor(Math.random()*(20));
-				cords.y = Math.floor(Math.random()*(20));
-				this.game.players[playerId].pos = cords;
-				playersState[playerId] = this.game.players[playerId].pos;
+			for(var playerId in this.playerClients){
+				if(this.playerClients.hasOwnProperty(playerId)){
+					//get every player's starting position
+					var cords = {};
+					cords.x = Math.floor(Math.random()*(20));
+					cords.y = Math.floor(Math.random()*(20));
+					this.game.players[playerId].pos = cords;
+					playersState[playerId] = this.game.players[playerId].pos;
+				}
 			}
+
+			playersState = JSON.stringify(playersState);
+			console.log("positions: "+playersState);
+
+			for(var playerId in this.playerClients){
+				if(this.playerClients.hasOwnProperty(playerId)){
+					//we send all every starting position
+					this.playerClients[playerId].send('s.'+playersState);
+				}
+			}			
+		}
+		else{
+
+			console.log("entered");
+			for(var playerId in this.playerClients){
+				if(this.playerClients.hasOwnProperty(playerId)){
+					//get every player's starting position
+					playersState[playerId] = this.game.players[playerId].pos;
+				}
+			}
+
+			var cords = {};
+			cords.x = Math.floor(Math.random()*(20));
+			cords.y = Math.floor(Math.random()*(20));
+			this.game.players[newPlayer.userid].pos = cords;
+			playersState[newPlayer.userid] = this.game.players[newPlayer.userid].pos;
+			playersState = JSON.stringify(playersState);
+			newPlayer.send('s.'+playersState);
 		}
 
-		playersState = JSON.stringify(playersState);
-		console.log("positions: "+playersState);
 
-		for(var playerId in this.playerClients){
-			if(this.playerClients.hasOwnProperty(playerId)){
-				//we send all every starting position
-				this.playerClients[playerId].send('s.'+playersState);
-			}
-		}
 	}
 
 	EndGame(){

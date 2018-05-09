@@ -1,8 +1,8 @@
+var serverUpdatesPerSecond = 20;	//on server we update preferiby 20 times per second
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser	
 	var PlayerObject = require('./player.js');
 	var GameMap = require('./map.js');
-	var serverUpdatesPerSecond = 20;	//on server we update preferiby 20 times per second
 }else{
 	var debugDrawing = true;
 	var clientUpdateFrequency = 30;	//on client run at 60fps
@@ -39,7 +39,9 @@ class GameCore{
 			this.ClientConnectToServer();
 		}
 
-		this.entityInterpolation = false;
+
+		this.entityInterpolation = true;
+		this.clientSmoothing = 10;
 	}
 
 	Update(){
@@ -103,6 +105,7 @@ class GameCore{
 			if(this.players.hasOwnProperty(playerid)){
 				this.players[playerid].socket.emit('onServerUpdate', serializedState);
 				if(this.players[playerid].socket){
+
 				}
 			}
 		}
@@ -117,41 +120,110 @@ class GameCore{
 		//process server messages
 		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime);
 		this.selfPlayer.UpdatePhysics(this.localDeltaTime);
-
 		this.ClientProcessNetUpdates();
+
 	}
 
+	ClientEntityInterpolation(){
+		var now = new Date();
+		//position on timeline (refer to that clarifier drawing to understand this)
+		var timeStamp = now - (1/serverUpdatesPerSecond)*1000.0; //*1000 = in milliseconds
 
-	ClientProcessNetUpdates(){
-		if(this.entityInterpolation){
+		for(var playerid in this.players){
+			if(this.players.hasOwnProperty(playerid)){
+				if(this.selfPlayer.id != playerid){
 
-		}
-		else{
-			if(this.serverUpdates.length){
-				var state = this.serverUpdates[this.serverUpdates.length-1];
-				var debugPos = state[this.selfPlayer.id].pos;
+					var buffer = this.players[playerid].positionBuffer;
+					if(buffer.length > 1){
+					
+						//find positions that match our time on the timeline
+						var target;
+						var previous;
+						var deleteUntil = 0;
+						for(var i = 0; i < buffer.length-1; i++){
+							if(timeStamp > buffer[i].timeStamp && timeStamp < buffer[i+1].timeStamp){
+								target = buffer[i+1];
+								previous = buffer[i];
+								deleteUntil = i;
+								break;
+							}
+						}
+						this.players[playerid].positionBuffer.splice(0, deleteUntil);
 
-				if(debugDrawing)
-					this.selfPlayer.SetServerPosition(debugPos);
+						if(target && previous){
+							//timepoint = how far in between 
+							var difference = target.timeStamp - timeStamp;
+							var maxDifference = target.timeStamp - previous.timeStamp;
+							var timePoint = difference/maxDifference;
 
-				for(var playerid in state){
-					if(this.players.hasOwnProperty(playerid) && playerid != this.selfPlayer.id){
-						this.players[playerid].SetPosition(state[playerid].pos);
-					}
-				}				
+
+							var serverTimePos = {x: this.players[playerid].pos.x, y: this.players[playerid].pos.y};
+							serverTimePos.x = Phaser.Math.linear(previous.pos.x, target.pos.x, timePoint);
+							serverTimePos.y = Phaser.Math.linear(previous.pos.y, target.pos.y, timePoint);
+
+							//since this is only rendering the player as it was exactly milliseconds ago on the server
+							//(with all the net bumps and jumps) we add some smoothing here
+
+							//smoothing
+							if(this.clientSmoothing > 0 && this.localDeltaTime < 0.10){
+								var smoothedPos = {};
+//								console.log(this.localDeltaTime+"*"+this.clientSmoothing+" = "+this.localDeltaTime*this.clientSmoothing);
+								smoothedPos.x = Phaser.Math.linear(this.players[playerid].pos.x, serverTimePos.x, this.localDeltaTime*this.clientSmoothing);
+								smoothedPos.y = Phaser.Math.linear(this.players[playerid].pos.y, serverTimePos.y, this.localDeltaTime*this.clientSmoothing);
+								this.players[playerid].SetPosition(smoothedPos);
+							}
+							else{
+								this.players[playerid].SetPosition(serverTimePos);						
+							}
+						}		
+					}			
+				}
 			}
 		}
 	}
 
-	ClientOnServerUpdate(data){
+	ClientProcessNetUpdates(){	//called on the update loop
+		if(this.serverUpdates.length){
+			var state = this.serverUpdates[this.serverUpdates.length-1];
+			var debugPos = state[this.selfPlayer.id].pos;
+
+			if(debugDrawing){
+				this.selfPlayer.SetServerPosition(debugPos);
+			}
+
+			if(this.entityInterpolation){
+				this.ClientEntityInterpolation();
+			}
+			else{
+				for(var playerid in state){
+					if(this.players.hasOwnProperty(playerid) && playerid != this.selfPlayer.id){
+						this.players[playerid].SetPosition(state[playerid].pos);
+					}
+				}		
+			}
+		}
+	}
+
+	ClientOnServerUpdate(data){	//call when reciving a server message, not on the update loop
 		var state = JSON.parse(data);
 		this.serverUpdates.push(state);
 
+		this.selfPlayer.ClientServerReconciliation(this.serverUpdates);
+		
+		if(this.entityInterpolation){
+			for(var playerid in this.players){
+				if(this.players.hasOwnProperty(playerid)){
+					if(this.selfPlayer.id != playerid){
+						var time = new Date();	//we need the positions and their date for interpolation
+						this.players[playerid].positionBuffer.push({pos: state[playerid].pos, timeStamp: time});
+					}
+				}
+			}
+		}
 		if(this.serverUpdates.length >= 100){
 			this.serverUpdates.splice(0, 1);
 		}
 
-		this.selfPlayer.ClientServerReconciliation(this.serverUpdates);
 	}
 
 	ClientAddPlayer(clientId){
@@ -164,6 +236,10 @@ class GameCore{
 			this.players[clientId] = new Player(this, null, false);
 			this.players[clientId].id = clientId;
 			console.log("Player "+clientId+" created");
+
+			if(this.active){
+				this.players[clientId].CreateSprite();
+			}
 		}
 
 		this.playerCount++;

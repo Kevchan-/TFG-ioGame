@@ -12,6 +12,7 @@ class Player{
 		this.inputs = [];	//serverside
 		this.pendingInputs = [];	//inputs for when we reconciliate with server, clientside only
 		this.pendingIterationDeltaTimes = [];	//for reconciliation. Since we don't store inputs that don't change the destination tile, we need to store the deltaTimes of every iteration here
+		this.positionBuffer = [];	//clientside, save previous positions here for interpolation
 		this.lastInputSequenceNumber = 0;
 		this.isSelf = isSelf;
 		this.state = 'not connected';	
@@ -90,8 +91,8 @@ class Player{
 			}
 		}
 
-		console.log("Client position: "+auxPos.x+", "+auxPos.y);
-		console.log("Reconc position: "+this.pos.x+", "+this.pos.y);
+	//	console.log("Client position: "+auxPos.x+", "+auxPos.y);
+	//	console.log("Reconc position: "+this.pos.x+", "+this.pos.y);
 	}
 
 	ClientProcessInputs(socket, time){	//we check the current inputs to store them for later reconciliation and send them to the server right now
@@ -103,26 +104,33 @@ class Player{
 		var input = {};
 		input.key = "n";
 
-//			console.log(deltaTime);
-		if(upKey.isDown){
-			input.key = 'u';
-		}
-		else if(rightKey.isDown){
-			input.key = 'r';
-		}
-		else if(downKey.isDown){
+		if(this.game.input.activePointer.isDown){
 			input.key = 'd';
 		}
-		else if(leftKey.isDown){
-			input.key = 'l';
+		else{
+			if(upKey.isDown){
+				input.key = 'u';
+			}
+			else if(rightKey.isDown){
+				input.key = 'r';
+			}
+			else if(downKey.isDown){
+				input.key = 'd';
+			}
+			else if(leftKey.isDown){
+				input.key = 'l';
+			}			
 		}
+
+
+
+
 
 		var newDestination = this.ApplyInput(input);
 
 		if(newDestination){
 			input.sequenceNumber = this.lastInputSequenceNumber;
 			this.lastInputSequenceNumber++;
-			console.log(this.lastInputSequenceNumber+": "+input.key);
 
 			input.id = this.id;
 			input.timeStamp = time.toString().replace(".", ",");
@@ -298,6 +306,8 @@ class Player{
 	}
 
 	SetPosition(pos){
+		this.pos.x = pos.x;
+		this.pos.y = pos.y;		
 		SetSpritePosition(this.sprite, pos);	//method on rendering
 	}
 

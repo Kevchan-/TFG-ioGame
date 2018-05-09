@@ -8,6 +8,8 @@ var downKey;
 var leftKey;
 var rightKey;
 
+var touchCords;
+
 //sprite object
 Sprite = function(index, name){
     this.index = index;
@@ -32,6 +34,7 @@ function Create () {
     downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
     leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
     rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+
 }
 
 function SetSpritePosition(sprite, pos){
