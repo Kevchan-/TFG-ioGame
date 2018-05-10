@@ -10,8 +10,13 @@ class Map{
 			map.addTilesetImage('roguelikeSheet_transparent', 'tiles');
 			var layer = map.createLayer('Tile Layer 1');
 			var obstacles = map.createLayer('Tile Layer 2');
+			layer.scale.set(scaleRatio*spriteScale);
+			obstacles.scale.set(scaleRatio*spriteScale);
 			layer.resizeWorld();
 			obstacles.resizeWorld();
+
+			var bounds = game.world.getBounds();
+			console.log("Bounds: "+bounds);
 		}
 		else{
 			var mapData = this.ServerLoadJSON(mapName);

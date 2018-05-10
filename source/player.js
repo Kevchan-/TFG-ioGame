@@ -25,6 +25,7 @@ class Player{
 			this.server = true;
 		}else{
 			console.log("Player created");
+			tileSize = tileSize*scaleRatio*spriteScale;
 		}
 		
 		this.pos = {
@@ -104,10 +105,12 @@ class Player{
 		input.key = "n";
 
 //		game.debug.text(this.pos.x.toFixed(1)+", " +this.pos.y.toFixed(1), spritePos.x, spritePos.y);
-//		game.debug.text(spritePos.x+", " +spritePos.y, spritePos.x, spritePos.y);
+
+		var spritePos = this.sprite.worldPosition;			
+		var spriteWorldPos = this.sprite.position;
+//		game.debug.text(spriteWorldPos.x+", " +spriteWorldPos.y, spritePos.x, spritePos.y);
 
 		if(game.input.activePointer.isDown){
-		var spritePos = this.sprite.worldPosition;
 			var angle = GetAngle(spritePos, game.input.activePointer.position);
 //			game.debug.geom(point, 'rgba(255,255,0,1)');
 //			game.debug.text(game.input.activePointer.x+", " +game.input.activePointer.y, point.x, point.y);
