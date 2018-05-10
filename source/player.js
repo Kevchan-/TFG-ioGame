@@ -339,6 +339,7 @@ class Player{
 		var cords = this.pos;
 		if(this.isSelf){
 			this.serverSprite = AddSprite('blue', cords);
+		console.log("New Sprite");
 			this.sprite = AddSprite('red', cords);
 			game.camera.follow(this.sprite);
 		}
