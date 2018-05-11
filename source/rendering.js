@@ -59,7 +59,7 @@ function AddSprite(name, cords){
 //	sprite.anchor.setTo(0.5, 0.5);
 
    sprite.scale.set(gameScale);
-   console.log("sprite scale: "+spriteScale+"*"+scaleRatio);
+  // console.log("sprite scale: "+spriteScale+"*"+scaleRatio);
     sprite.index = objects.length;
 	objects.push(sprite);
 	return(sprite);

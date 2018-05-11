@@ -10,9 +10,9 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 	var spriteScale = 6;
 	var scaleRatio = window.devicePixelRatio / 3;
 	var gameScale = spriteScale*scaleRatio;
-	console.log(window.devicePixelRatio+", scale ratio "+scaleRatio);
-	var game = new Phaser.Game(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, Phaser.AUTO, '', { preload: Preload, create: Create }, false, false);
-	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
+//	console.log(window.devicePixelRatio+", scale ratio "+scaleRatio);
+	var game = new Phaser.Game(window.innerWidth, window.innerHeight, Phaser.AUTO, '', { preload: Preload, create: Create }, false, false);
+//	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
 
 
@@ -32,7 +32,7 @@ class GameCore{
 
 		this.active = false;
 
-		console.log("Game created");
+//		console.log("Game created");
 
 		if(this.room){	//only when created on the server are we given a room on constructor
 			this.server = true;
@@ -236,12 +236,12 @@ class GameCore{
 		if(this.playerCount == 0){
 			this.selfPlayer = new Player(this, null, true);
 			this.selfPlayer.id = clientId;
-			console.log("Your player was created. You are: "+clientId);
+//			console.log("Your player was created. You are: "+clientId);
 		}
 		else{
 			this.players[clientId] = new Player(this, null, false);
 			this.players[clientId].id = clientId;
-			console.log("Player "+clientId+" created");
+//			console.log("Player "+clientId+" created");
 
 			if(this.active){
 				this.players[clientId].CreateSprite();
@@ -260,7 +260,7 @@ class GameCore{
 
 		for(var playerId in this.players){
 			if(this.players.hasOwnProperty(playerId)){
-				console.log(playersPositions[playerId]);
+//				console.log(playersPositions[playerId]);
 				this.players[playerId].pos = playersPositions[playerId];
 				this.players[playerId].CreateSprite();
 			}
@@ -274,7 +274,7 @@ class GameCore{
 
 		this.socket.on('connect', function(){
 			this.selfPlayer.state = 'connecting';
-			console.log("Connecting...");
+//			console.log("Connecting...");
 		}.bind(this));
 
 		this.socket.on('onConnected', this.ClientOnConnected.bind(this));
@@ -315,17 +315,17 @@ class GameCore{
 		this.playerCount--;
 		this.players[id].RemoveSprite();
 		delete this.players[id];
-		console.log("Player "+id+" left");
+//		console.log("Player "+id+" left");
 	}
 
 
 	ClientOnHost(data){
-		console.log("You're the host");
+//		console.log("You're the host");
 		this.selfPlayer.host = true;
 	}
 
 	ClientOnConnected(data){
-		console.log("You connected");
+//		console.log("You connected");
 //		this.selfPlayer.state = ''
 //		this.selfPlayer.state = 'connected';
 //		this.selfPlayer.online = true;

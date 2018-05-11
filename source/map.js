@@ -16,7 +16,7 @@ class Map{
 			obstacles.resizeWorld();
 
 			var bounds = game.world.getBounds();
-			console.log("Bounds: "+bounds);
+	//		console.log("Bounds: "+bounds);
 		}
 		else{
 			var mapData = this.ServerLoadJSON(mapName);

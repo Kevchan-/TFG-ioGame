@@ -19,12 +19,12 @@ class Player{
 		this.test = 0;
 
 		if(this.socket){
-			console.log("Player created in server");
+//			console.log("Player created in server");
 			this.id = client.userid;
 			this.lastInputSequenceNumber = -1;
 			this.server = true;
 		}else{
-			console.log("Player created");
+//			console.log("Player created");
 			tileSize = tileSize*scaleRatio*spriteScale;
 		}
 		
@@ -33,7 +33,7 @@ class Player{
 			y: 0
 		};
 		
-		console.log("Position: "+this.pos.x+", "+this.pos.y);
+//		console.log("Position: "+this.pos.x+", "+this.pos.y);
 
 		this.destination = {	//the tile we're moving to, if we moving
 			x: 0,
