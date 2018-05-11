@@ -18,7 +18,6 @@ Sprite = function(index, name){
 
 //sprite functions
 function Preload () {
-    game.load.image('logo', 'phaser.png');
     game.load.image('red', "red.png");
     game.load.image('blue', "blue.png");
     game.load.tilemap('map100x100', 'assets/map100x100.json', null, Phaser.Tilemap.TILED_JSON);
@@ -26,7 +25,6 @@ function Preload () {
 }
 
 function Create () {
-//	game.stage.backgroundColor = '#2d2d2d';
     game.stage.backgroundColor = "#2d2d2d";
 	game.stage.smoothed = false;
 //    logo = game.add.sprite(0, 0, 'logo');
@@ -35,6 +33,7 @@ function Create () {
     downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
     leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
     rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+    game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
 }
 
 function SetSpritePosition(sprite, pos){

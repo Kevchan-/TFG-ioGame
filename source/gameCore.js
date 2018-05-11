@@ -7,11 +7,11 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 	var debugDrawing = true;
 	var clientUpdateFrequency = 30;	//on client run at 60fps
 //	var game = new Phaser.Game(40*tileSize, 20*tileSize, Phaser.auto, '', { preload: Preload, create: Create });
-	var spriteScale = 6;
+	var spriteScale = 3;
 	var scaleRatio = window.devicePixelRatio / 3;
 	var gameScale = spriteScale*scaleRatio;
 //	console.log(window.devicePixelRatio+", scale ratio "+scaleRatio);
-	var game = new Phaser.Game(window.innerWidth, window.innerHeight, Phaser.AUTO, '', { preload: Preload, create: Create });
+	var game = new Phaser.Game(20*16, 20*16, Phaser.AUTO, '', { preload: Preload, create: Create }, false, false);
 //	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
 
