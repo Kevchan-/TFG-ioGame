@@ -329,7 +329,8 @@ class Player{
 		this.pos.x = pos.x;
 		this.pos.y = pos.y;		
 		SetSpritePosition(this.sprite, pos);	//method on rendering
-		SetCameraPosition(GetSpritePosition(this.sprite));
+		if(this.isSelf)
+			SetCameraPosition(GetSpritePosition(this.sprite));
 	}
 
 	SetServerPosition(pos){
