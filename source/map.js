@@ -8,11 +8,10 @@ class Map{
 		if(typeof(isServer) == 'undefined'){
 			map = game.add.tilemap(mapName);
 			map.addTilesetImage('tiles1024', 'tiles1024');
-//			var layer = map.createLayer('Tile Layer 1');
+			var layer = map.createLayer('Tile Layer 1');
 			var obstacles = map.createLayer('Tile Layer 2');
-//			layer.scale.set(gameScale);
-//			obstacles.scale.set(gameScale);
-//			layer.resizeWorld();
+
+			layer.resizeWorld();
 			obstacles.resizeWorld();
 
 			var bounds = game.world.getBounds();

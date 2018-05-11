@@ -40,7 +40,7 @@ function Create () {
 
     // enable crisp rendering
     game.renderer.renderSession.roundPixels = true;
-    Phaser.Canvas.setImageRenderingCrisp(this.game.canvas)
+    Phaser.Canvas.setImageRenderingCrisp(game.canvas);
 }
 
 function SetSpritePosition(sprite, pos){

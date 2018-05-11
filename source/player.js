@@ -25,7 +25,7 @@ class Player{
 			this.server = true;
 		}else{
 //			console.log("Player created");
-			tileSize = tileSize*scaleRatio*spriteScale;
+			tileSize = 16;
 		}
 		
 		this.pos = {
