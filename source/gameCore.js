@@ -11,7 +11,7 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 	var scaleRatio = window.devicePixelRatio / 3;
 	var gameScale = spriteScale*scaleRatio;
 //	console.log(window.devicePixelRatio+", scale ratio "+scaleRatio);
-	var game = new Phaser.Game(window.innerWidth, window.innerHeight, Phaser.AUTO, '', { preload: Preload, create: Create }, false, false);
+	var game = new Phaser.Game(window.innerWidth, window.innerHeight, Phaser.AUTO, '', { preload: Preload, create: Create });
 //	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
 
