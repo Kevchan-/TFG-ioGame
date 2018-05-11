@@ -7,11 +7,11 @@ class Map{
 		var map;
 		if(typeof(isServer) == 'undefined'){
 			map = game.add.tilemap(mapName);
-			map.addTilesetImage('roguelikeSheet_transparent', 'tiles');
+			map.addTilesetImage('tiles1024', 'tiles1024');
 			var layer = map.createLayer('Tile Layer 1');
 			var obstacles = map.createLayer('Tile Layer 2');
-//			layer.scale.set(scaleRatio*spriteScale);
-//			obstacles.scale.set(scaleRatio*spriteScale);
+			layer.scale.set(gameScale);
+			obstacles.scale.set(gameScale);
 			layer.resizeWorld();
 			obstacles.resizeWorld();
 

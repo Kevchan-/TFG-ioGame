@@ -9,8 +9,9 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 //	var game = new Phaser.Game(40*tileSize, 20*tileSize, Phaser.auto, '', { preload: Preload, create: Create });
 	var spriteScale = 6;
 	var scaleRatio = window.devicePixelRatio / 3;
+	var gameScale = spriteScale*scaleRatio;
 	console.log(window.devicePixelRatio+", scale ratio "+scaleRatio);
-	var game = new Phaser.Game(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, Phaser.CANVAS, '', { preload: Preload, create: Create }, false, false);
+	var game = new Phaser.Game(window.innerWidth * window.devicePixelRatio, window.innerHeight * window.devicePixelRatio, Phaser.AUTO, '', { preload: Preload, create: Create }, false, false);
 	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
 
@@ -78,7 +79,7 @@ class GameCore{
 
 	ServerStartGame(map){
 		this.active = true;
-		this.map = new GameMap("map", true);
+		this.map = new GameMap("map100x100", true);
 		this.Update();
 	}
 
@@ -253,7 +254,7 @@ class GameCore{
 	ClientOnGameStart(data){
 		var playersPositions = JSON.parse(data);
 		this.active = true;
-		this.map = new Map('map');
+		this.map = new Map('map100x100');
 		this.selfPlayer.pos = playersPositions[this.selfPlayer.id];
 		this.selfPlayer.CreateSprite();
 

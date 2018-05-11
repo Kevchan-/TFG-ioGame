@@ -329,6 +329,7 @@ class Player{
 		this.pos.x = pos.x;
 		this.pos.y = pos.y;		
 		SetSpritePosition(this.sprite, pos);	//method on rendering
+		SetCameraPosition(GetSpritePosition(this.sprite));
 	}
 
 	SetServerPosition(pos){
@@ -341,7 +342,6 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 //		console.log("New Sprite");
 			this.sprite = AddSprite('red', cords);
-			game.camera.follow(this.sprite);
 		}
 		else{
 			this.sprite = AddSprite('blue', cords);

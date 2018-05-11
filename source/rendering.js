@@ -21,8 +21,8 @@ function Preload () {
     game.load.image('logo', 'phaser.png');
     game.load.image('red', "red.png");
     game.load.image('blue', "blue.png");
-    game.load.tilemap('map', 'assets/map.json', null, Phaser.Tilemap.TILED_JSON);
-    game.load.image('tiles', 'assets/tiles.png');
+    game.load.tilemap('map100x100', 'assets/map100x100.json', null, Phaser.Tilemap.TILED_JSON);
+    game.load.image('tiles1024', 'assets/tiles1024.png');
 }
 
 function Create () {
@@ -42,6 +42,10 @@ function SetSpritePosition(sprite, pos){
     sprite.y = Math.round(pos.y*16*scaleRatio*spriteScale);
 }
 
+function SetCameraPosition(pos){
+    game.camera.focusOnXY(pos.x, pos.y);
+}
+
 function GetSpritePosition(sprite){
     var pos = {};
     pos.x = sprite.x;
@@ -54,8 +58,8 @@ function AddSprite(name, cords){
 
 //	sprite.anchor.setTo(0.5, 0.5);
 
- //   sprite.scale.set(spriteScale*scaleRatio);
- //   console.log("sprite scale: "+spriteScale+"*"+scaleRatio);
+   sprite.scale.set(gameScale);
+   console.log("sprite scale: "+spriteScale+"*"+scaleRatio);
     sprite.index = objects.length;
 	objects.push(sprite);
 	return(sprite);
