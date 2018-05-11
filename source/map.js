@@ -11,7 +11,7 @@ class Map{
 //			var layer = map.createLayer('Tile Layer 1');
 			var obstacles = map.createLayer('Tile Layer 2');
 //			layer.scale.set(gameScale);
-			obstacles.scale.set(gameScale);
+//			obstacles.scale.set(gameScale);
 //			layer.resizeWorld();
 			obstacles.resizeWorld();
 

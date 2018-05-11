@@ -33,12 +33,19 @@ function Create () {
     downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
     leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
     rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+    
     game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
+  //  game.scale.scaleMode = Phaser.ScaleManager.USER_SCALE;
+//    game.scale.setUserScale(gameScale, gameScale);
+
+    // enable crisp rendering
+    game.renderer.renderSession.roundPixels = true;
+    Phaser.Canvas.setImageRenderingCrisp(this.game.canvas)
 }
 
 function SetSpritePosition(sprite, pos){
-    sprite.x = Math.round(pos.x*16*scaleRatio*spriteScale);
-    sprite.y = Math.round(pos.y*16*scaleRatio*spriteScale);
+    sprite.x = Math.round(pos.x*16);
+    sprite.y = Math.round(pos.y*16);
 }
 
 function SetCameraPosition(pos){
@@ -57,7 +64,7 @@ function AddSprite(name, cords){
 
 //	sprite.anchor.setTo(0.5, 0.5);
 
-   sprite.scale.set(gameScale);
+ //  sprite.scale.set(gameScale);
   // console.log("sprite scale: "+spriteScale+"*"+scaleRatio);
     sprite.index = objects.length;
 	objects.push(sprite);
