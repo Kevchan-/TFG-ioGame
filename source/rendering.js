@@ -18,10 +18,16 @@ Sprite = function(index, name){
 
 //sprite functions
 function Preload () {
+    game.plugins.add(Phaser.Plugin.Tiled);
     game.load.image('red', "red.png");
     game.load.image('blue', "blue.png");
     game.load.tilemap('map100x100', 'assets/map100x100.json', null, Phaser.Tilemap.TILED_JSON);
     game.load.image('tiles1024', 'assets/tiles1024.png');
+//  var mapCacheKey = Phaser.Plugin.Tiled.utils.cacheKey;
+//  game.load.tiledmap(mapCacheKey('map', 'tiledmap'), 'assets/map100x100.json', null, Phaser.Tilemap.TILED_JSON);
+//  game.load.image(mapCacheKey('map', 'tileset', 'Tile Layer 1'), 'assets/tiles1024.png');
+//  game.load.image(mapCacheKey('map', 'layer', 'Tile Layer 1'), 'assets/tiles1024.png');
+
 }
 
 function Create () {

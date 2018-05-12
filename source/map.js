@@ -13,15 +13,13 @@ class Map{
 
 			layer.resizeWorld();
 			obstacles.resizeWorld();
-
-			var bounds = game.world.getBounds();
-	//		console.log("Bounds: "+bounds);
 		}
 		else{
 			var mapData = this.ServerLoadJSON(mapName);
 			map = this.ServerParseMap(mapData);
 		}
 	}
+
 
 	ServerLoadJSON(mapName){
 		var mapData = JSON.parse(fs.readFileSync('./source/assets/'+mapName+'.json'));
