@@ -6,12 +6,25 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 }else{
 	var debugDrawing = true;
 	var clientUpdateFrequency = 30;	//on client run at 60fps
-//	var game = new Phaser.Game(40*tileSize, 20*tileSize, Phaser.auto, '', { preload: Preload, create: Create });
-	var spriteScale = 3;
-	var scaleRatio = window.devicePixelRatio / 3;
-	var gameScale = spriteScale*scaleRatio;
-//	console.log(window.devicePixelRatio+", scale ratio "+scaleRatio);
-	var game = new Phaser.Game(20*16, 20*16, Phaser.CANVAS, '', { preload: Preload, create: Create }, false, false);
+
+	var width = 20*16;	//20 tiles on horizontal screen 
+	var height = 20*16;
+	var innerWidth = window.innerWidth;
+	var innerHeight = window.innerHeight;
+	var windowsRatio = 1;
+	
+	if(innerWidth > innerHeight){
+		windowsRatio = innerWidth/innerHeight;
+		width = width*windowsRatio;
+	}
+	else{
+		windowsRatio = innerHeight/innerWidth;
+		height = height*windowsRatio;
+	}
+	width = Math.round(width);
+	height = Math.round(height);
+	var game = new Phaser.Game(width, height, Phaser.CANVAS, '', { preload: Preload, create: Create }, false, false);
+	
 //	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
 
@@ -122,7 +135,7 @@ class GameCore{
 		this.players[client.userid].ServerStoreInput(data);
 	}
 
-	ClientUpdate(deltaTime){
+	ClientUpdate(deltaTime){	
 		//process server messages
 		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime);
 		this.selfPlayer.UpdatePhysics(this.localDeltaTime);
@@ -270,6 +283,7 @@ class GameCore{
 	}
 
 	ClientConnectToServer(){
+   //     console.log("pos");
 		this.socket = io.connect();
 
 		this.socket.on('connect', function(){
