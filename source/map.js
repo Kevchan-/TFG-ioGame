@@ -4,22 +4,63 @@ if(typeof(global)!== 'undefined'){
 
 class Map{
 	constructor(mapName, isServer){
-		var map;
+		this.tileMap = [];
+		this.map;
+		this.isServer = false;
 		if(typeof(isServer) == 'undefined'){
-			map = game.add.tilemap(mapName);
-			map.addTilesetImage('tiles1024', 'tiles1024');
-			var layer = map.createLayer('Tile Layer 1');
-			var obstacles = map.createLayer('Tile Layer 2');
+			this.map = game.add.tilemap(mapName);
+			this.map.addTilesetImage('tiles1024', 'tiles1024');
+			var layer = this.map.createLayer('Tile Layer 1');
+			var obstacles = this.map.createLayer('Tile Layer 2');
 
 			layer.resizeWorld();
 			obstacles.resizeWorld();
+
+			for(var i = 0; i < this.map.height; i++){
+				this.tileMap[i] = {};
+				for(var j = 0; j < this.map.width; j++){
+					this.tileMap[i][j] = this.map.getTile(i, j, obstacles);
+
+				}
+			}
 		}
 		else{
+			this.isServer = true;
 			var mapData = this.ServerLoadJSON(mapName);
-			map = this.ServerParseMap(mapData);
+			this.map = this.ServerParseMap(mapData);
+
+			for(var i = 0; i < this.map.height; i++){
+				this.tileMap[i] = {};
+				var print = "";
+				for(var j = 0; j < this.map.width; j++){
+					this.tileMap[i][j] = this.map.layers[1].tiles[j][i];
+				}
+			}
 		}
 	}
 
+	GetTile(x, y){
+		return(this.tileMap[x][y]);
+	}
+
+	IsTileFree(x, y){
+		var free = true;
+		var tile = this.GetTile(x, y);
+		console.log("tile "+x+", "+y+": "+tile);
+		if(this.isServer){
+			if(tile != 0){
+				free = false;
+				console.log("is not free");
+			}
+		}
+		else{
+			if(tile != null){
+				free = false;
+			}
+		}
+
+		return(free);
+	}
 
 	ServerLoadJSON(mapName){
 		var mapData = JSON.parse(fs.readFileSync('./source/assets/'+mapName+'.json'));
@@ -48,7 +89,6 @@ class Map{
 					string = string+" "+map.layers[o].tiles[i][j];
 					iterator++;
 				}
-//				console.log("Row: "+string);
 			}
 		}
 		return(map);

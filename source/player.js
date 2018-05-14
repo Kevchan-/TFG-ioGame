@@ -148,8 +148,9 @@ class Player{
 
 		var newDestination = this.ApplyInput(input);
 
-		if(newDestination){
+		if(newDestination || newDestination == 'hit'){
 			input.sequenceNumber = this.lastInputSequenceNumber;
+			console.log(input.sequenceNumber+": "+newDestination+", "+this.pos.x+", "+this.pos.y);
 			this.lastInputSequenceNumber++;
 
 			input.id = this.id;
@@ -177,9 +178,19 @@ class Player{
 				if(this.inputs[i].sequenceNumber > this.lastInputSequenceNumber){
 					input.key = this.inputs[i].key;
 					var newDestination = this.ApplyInput(input);
-					if(newDestination){
+
+					console.log(this.inputs[i].sequenceNumber+": "+newDestination+", "+this.pos.x+", "+this.pos.y);
+					if(newDestination == "hit"){
+						console.log(newDestination);
+						this.lastInputSequenceNumber = this.inputs[i].sequenceNumber;
+						this.inputs.splice(0, i+1);	
+					}
+					else if(newDestination){
 						this.lastInputSequenceNumber = this.inputs[i].sequenceNumber;
 						this.inputs.splice(0, i+1);						
+					}
+					else{
+
 					}
 					break;
 				}
@@ -195,9 +206,15 @@ class Player{
 				this.reached = true;
 				this.moving = false;	//then don't move at all this frame and mark as not moving
 				if(input.key !== "n"){	//check for input the same frame so that we don't stop
-					this.destination = this.GetDestination(input.key);
-					this.moving = true;
-					newDestination = true;
+					var destination = this.GetDestination(input.key, this.game.map);
+					if(destination != 'hit'){
+						this.destination = destination;
+						this.moving = true;
+						newDestination = true;
+					}
+					else{
+						newDestination = 'hit';
+					}
 				}				
 			}
 			else{	//we not there
@@ -206,9 +223,15 @@ class Player{
 		}
 		else{
 			if(input.key !== "n"){	//if we're not moving check for input that tells us to move
-				this.destination = this.GetDestination(input.key);
-				this.moving = true;
-				newDestination = true;
+				var destination = this.GetDestination(input.key, this.game.map);
+				if(destination != 'hit'){
+					this.destination = destination;
+					this.moving = true;
+					newDestination = true;
+				}
+				else{
+					newDestination = 'hit';
+				}
 			}
 		}
 		return(newDestination);
@@ -230,7 +253,7 @@ class Player{
 		}
 	}
 
-	GetDestination(key){
+	GetDestination(key, map){
 		var tile = {};
 		tile.x = Math.trunc(this.pos.x);
 		tile.y = Math.trunc(this.pos.y);
@@ -247,6 +270,10 @@ class Player{
 			case "l":
 				tile.x = tile.x - 1;
 				break;
+		}
+
+		if(!map.IsTileFree(tile.x, tile.y)){
+			tile = "hit";
 		}
 		return(tile);
 	}
