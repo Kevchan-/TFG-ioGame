@@ -114,6 +114,21 @@ class GameCore{
 
 			}
 		}
+
+		state.removedTiles = {};
+
+		for(var tile in this.map.pendingRemovedTiles){
+			if(this.map.pendingRemovedTiles.hasOwnProperty(tile)){
+				var removedTile = this.map.pendingRemovedTiles[tile];
+				state.removedTiles[removedTile.x+"x"+removedTile.y] = {};
+				state.removedTiles[removedTile.x+"x"+removedTile.y].x = removedTile.x;
+				state.removedTiles[removedTile.x+"x"+removedTile.y].y = removedTile.y;
+				state.removedTiles[removedTile.x+"x"+removedTile.y].drop = "no";
+			}
+		}
+
+		this.map.pendingRemovedTiles = [];
+
 		state.serverTime = serverTime;
 		state.serverDeltaTime = this.localDeltaTime;
 		this.lastState = state;
@@ -123,9 +138,6 @@ class GameCore{
 		for(var playerid in this.players){
 			if(this.players.hasOwnProperty(playerid)){
 				this.players[playerid].socket.emit('onServerUpdate', serializedState);
-				if(this.players[playerid].socket){
-
-				}
 			}
 		}
 	}
@@ -214,11 +226,20 @@ class GameCore{
 				this.ClientEntityInterpolation();
 			}
 			else{
-				for(var playerid in state){
+				for(var playerid in this.players){
 					if(this.players.hasOwnProperty(playerid) && playerid != this.selfPlayer.id){
 						this.players[playerid].SetPosition(state[playerid].pos);
 					}
-				}		
+				}
+			}
+
+			var serverRemovedTiles = state.removedTiles;
+
+			for(var tile in serverRemovedTiles){
+				if(serverRemovedTiles.hasOwnProperty(tile)){
+					var rTile = serverRemovedTiles[tile];
+					this.map.RemoveTile(rTile.x, rTile.y);
+				}
 			}
 		}
 	}

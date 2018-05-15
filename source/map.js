@@ -7,6 +7,10 @@ class Map{
 		this.tileMap = [];
 		this.map;
 		this.isServer = false;
+		this.pendingRemovedTiles = [];	//serverside only
+
+		this.standardTileHp = 1;
+
 		if(typeof(isServer) == 'undefined'){
 			this.map = game.add.tilemap(mapName);
 			this.map.addTilesetImage('tiles1024', 'tiles1024');
@@ -19,8 +23,10 @@ class Map{
 			for(var i = 0; i < this.map.height; i++){
 				this.tileMap[i] = {};
 				for(var j = 0; j < this.map.width; j++){
-					this.tileMap[i][j] = this.map.getTile(i, j, obstacles);
-
+					var tile = {};
+					tile.hp = this.standardTileHp;
+					tile.type = this.map.getTile(i, j, obstacles);
+					this.tileMap[i][j] = tile;
 				}
 			}
 		}
@@ -33,7 +39,10 @@ class Map{
 				this.tileMap[i] = {};
 				var print = "";
 				for(var j = 0; j < this.map.width; j++){
-					this.tileMap[i][j] = this.map.layers[1].tiles[j][i];
+					var tile = {};
+					tile.hp = this.standardTileHp;
+					tile.type = this.map.layers[1].tiles[j][i];
+					this.tileMap[i][j] = tile;
 				}
 			}
 		}
@@ -46,20 +55,45 @@ class Map{
 	IsTileFree(x, y){
 		var free = true;
 		var tile = this.GetTile(x, y);
-		console.log("tile "+x+", "+y+": "+tile);
+		//console.log("tile "+x+", "+y+": "+tile);
 		if(this.isServer){
-			if(tile != 0){
+			if(tile.type != 0){
 				free = false;
-				console.log("is not free");
+		//		console.log("is not free");
 			}
 		}
 		else{
-			if(tile != null){
+			if(tile.type != null && tile.type != 0){
 				free = false;
 			}
 		}
-
 		return(free);
+	}
+
+	HitTile(x, y, damage, type){
+		var tile = this.GetTile(x, y);
+		tile.hp -= damage;
+
+		if(tile.hp <= 0){
+			this.RemoveTile(x, y);
+		}
+	}
+
+	RemoveTile(x, y){
+		if(this.isServer){
+			if(this.tileMap[x][y].type != 0){
+				this.tileMap[x][y].type = 0;
+				var tile = {x: x, y: y};
+				this.pendingRemovedTiles.push(tile);
+				console.log("removed Tile "+tile.x+", "+tile.y);				
+			}
+		}
+		else{
+			if(this.tileMap[x][y].type != 0){
+				this.tileMap[x][y].type = 0;
+				this.map.removeTile(x, y, 1);
+			}
+		}
 	}
 
 	ServerLoadJSON(mapName){

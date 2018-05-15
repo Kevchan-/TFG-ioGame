@@ -46,7 +46,11 @@ class Player{
 		};
 
 		this.moving = false;	//if traveling to the destination tile
+		this.hitting = false;	//if drill animation on
+		this.hitAnimationDuration = 0.2;
+		this.hitAnimationCounter = 0;
 		this.speed = 5;			//how much time it takes to move from tile to tile
+		this.damage = 1;
 	}
 
 	ServerStoreInput(data){
@@ -150,7 +154,7 @@ class Player{
 
 		if(newDestination || newDestination == 'hit'){
 			input.sequenceNumber = this.lastInputSequenceNumber;
-			console.log(input.sequenceNumber+": "+newDestination+", "+this.pos.x+", "+this.pos.y);
+//			console.log(input.sequenceNumber+": "+newDestination+", "+this.pos.x+", "+this.pos.y);
 			this.lastInputSequenceNumber++;
 
 			input.id = this.id;
@@ -201,19 +205,22 @@ class Player{
 
 	ApplyInput(input){
 		var newDestination = false;
-		if(this.moving){
+		if(this.moving && !this.hitting){
 			if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){	//if we already reached 
 				this.reached = true;
 				this.moving = false;	//then don't move at all this frame and mark as not moving
 				if(input.key !== "n"){	//check for input the same frame so that we don't stop
 					var destination = this.GetDestination(input.key, this.game.map);
-					if(destination != 'hit'){
+					if(destination.state != 'hit'){
 						this.destination = destination;
 						this.moving = true;
 						newDestination = true;
 					}
 					else{
+						console.log("tile "+destination.x+", " +destination.y);
+						this.HitTile(destination);
 						newDestination = 'hit';
+						this.hitting = true;
 					}
 				}				
 			}
@@ -221,16 +228,19 @@ class Player{
 				this.reached = false;
 			}
 		}
-		else{
+		else if(!this.hitting){
 			if(input.key !== "n"){	//if we're not moving check for input that tells us to move
 				var destination = this.GetDestination(input.key, this.game.map);
-				if(destination != 'hit'){
+				if(destination.state != 'hit'){
 					this.destination = destination;
 					this.moving = true;
 					newDestination = true;
 				}
 				else{
+					console.log("tile "+destination.x+", " +destination.y);
+					this.HitTile(destination);
 					newDestination = 'hit';
+					this.hitting = true;
 				}
 			}
 		}
@@ -242,6 +252,7 @@ class Player{
 		if(this.moving){
 			this.MoveToTile(this.destination, deltaTime);
 			//store the deltaTimes for server reconciliation
+
 			if(!this.pendingIterationDeltaTimes[this.lastInputSequenceNumber]){
 				this.pendingIterationDeltaTimes[this.lastInputSequenceNumber] = [];
 			}
@@ -249,7 +260,18 @@ class Player{
 
 			if(this.pendingIterationDeltaTimes.length >= 10){
 				this.pendingIterationDeltaTimes.splice(0, 1);
-			}			
+			}
+		}
+		else if(this.hitting){
+			if(this.hitAnimationCounter < this.hitAnimationDuration){
+				this.hitAnimationCounter += deltaTime;
+				//do stuff
+				console.log("hitting");
+			}
+			else{
+				this.hitAnimationCounter = 0;
+				this.hitting = false;
+			}
 		}
 	}
 
@@ -257,6 +279,7 @@ class Player{
 		var tile = {};
 		tile.x = Math.trunc(this.pos.x);
 		tile.y = Math.trunc(this.pos.y);
+		tile.state = "moved";
 		switch(key){
 			case "u":
 				tile.y = tile.y - 1;
@@ -273,9 +296,14 @@ class Player{
 		}
 
 		if(!map.IsTileFree(tile.x, tile.y)){
-			tile = "hit";
+			tile.state = "hit";
+			console.log("tile "+tile.x+", " +tile.y);
 		}
 		return(tile);
+	}
+
+	HitTile(tilePos){
+		this.game.map.HitTile(tilePos.x, tilePos.y, this.damage);
 	}
 
 	MoveToTile(tilePos, deltaTime){	//moves to adjacent tile
