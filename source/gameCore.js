@@ -128,7 +128,7 @@ class GameCore{
 			}
 		}
 
-		this.map.pendingChangedTiles = [];
+//		this.map.pendingChangedTiles = [];
 
 		state.serverTime = serverTime;
 		state.serverDeltaTime = this.localDeltaTime;
