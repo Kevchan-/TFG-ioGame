@@ -1,51 +1,82 @@
 if(typeof(global)!== 'undefined'){
 	var fs = require('fs');
+	var noiseGen = require('proc-noise');
+	var Perlin = new noiseGen();
 }
 
 class Map{
-	constructor(mapName, isServer){
+	constructor(tilemap, isServer){
 		this.tileMap = [];
-		this.map;
+//		this.map = {};
 		this.isServer = false;
-		this.pendingRemovedTiles = [];	//serverside only
+		this.pendingChangedTiles = [];	//serverside only
 
 		this.standardTileHp = 1;
 
 		if(typeof(isServer) == 'undefined'){
-			this.map = game.add.tilemap(mapName);
-			this.map.addTilesetImage('tiles1024', 'tiles1024');
-			var layer = this.map.createLayer('Tile Layer 1');
-			var obstacles = this.map.createLayer('Tile Layer 2');
+			this.tileMap = tilemap;
 
-			layer.resizeWorld();
-			obstacles.resizeWorld();
+			this.tileMap.height = this.tileMap.length;
+			this.tileMap.width = this.tileMap.length;
+//			game.world.setBounds(0, 0, this.tileMap.width*tileSize, this.tileMap.height*tileSize);
 
-			for(var i = 0; i < this.map.height; i++){
-				this.tileMap[i] = {};
-				for(var j = 0; j < this.map.width; j++){
-					var tile = {};
-					tile.hp = this.standardTileHp;
-					tile.type = this.map.getTile(i, j, obstacles);
-					this.tileMap[i][j] = tile;
+			this.map = game.add.tilemap();
+			this.map.addTilesetImage('spritesheet', 'spritesheet', tileSize, tileSize, 0, 0);
+			this.rocksLayer = this.map.create('rocks', this.tileMap.width, this.tileMap.height, tileSize, tileSize);
+			this.rocksLayer.resizeWorld();
+
+//			this.map.addTilesetImage('tiles1024', 'tiles1024');
+
+			console.log(this.map);
+			for(var i = 0; i < this.tileMap.height; i++){
+				for(var j = 0; j < this.tileMap.width; j++){
+//					var tile = {};
+//					tile.hp = this.standardTileHp;
+//					tile.type = this.map.getTile(i, j, obstacles);
+//					tile.type = 0;
+					var type = this.tileMap[i][j].type;
+//					var tile = new Tile(this.rocksLayer, type, i, j, tileSize, tileSize);
+//					console.log(type);
+					//this.tileMap[i][j].sprite = AddSprite('spritesheet', {x: i, y: j}, type);
+					this.map.putTile(type, i, j, this.rocksLayer);
+//					this.map.fill(2, i, j, 1, 1, this.rocksLayer);
+//					console.log("tile put");
 				}
 			}
 		}
 		else{
+			Perlin.noiseReseed();
+			this.noiseScale = 0.07;
 			this.isServer = true;
-			var mapData = this.ServerLoadJSON(mapName);
-			this.map = this.ServerParseMap(mapData);
+			this.tileMap.height = 50;
+			this.tileMap.width = 50;
+		//	var mapData = this.ServerLoadJSON(mapName);
+		//	this.map = this.ServerParseMap(mapData);
 
-			for(var i = 0; i < this.map.height; i++){
+			for(var i = 0; i < this.tileMap.height; i++){
 				this.tileMap[i] = {};
 				var print = "";
-				for(var j = 0; j < this.map.width; j++){
-					var tile = {};
-					tile.hp = this.standardTileHp;
-					tile.type = this.map.layers[1].tiles[j][i];
+				for(var j = 0; j < this.tileMap.width; j++){
+//					var tile = {};
+//					tile.hp = this.standardTileHp;
+//					tile.type = this.map.layers[1].tiles[j][i];
+					var tile = this.ServerGenerateTile(i, j);
 					this.tileMap[i][j] = tile;
 				}
 			}
 		}
+	}
+
+	ServerGenerateTile(x, y){
+		var tile = {};
+		var value = Perlin.noise(x * this.noiseScale, y * this.noiseScale);
+
+		tile.x = x;
+		tile.y = y;
+		tile.type = Math.round(value*4/*total types of tile*/);
+		tile.hp = this.standardTileHp;
+
+		return(tile);
 	}
 
 	GetTile(x, y){
@@ -55,18 +86,13 @@ class Map{
 	IsTileFree(x, y){
 		var free = true;
 		var tile = this.GetTile(x, y);
-		//console.log("tile "+x+", "+y+": "+tile);
-		if(this.isServer){
-			if(tile.type != 0){
-				free = false;
-		//		console.log("is not free");
-			}
+//		console.log("type "+tile.type);
+
+		if(tile.type != 2 && tile.type != 3){
+			free = false;
+	//		console.log("tile not free");
 		}
-		else{
-			if(tile.type != null && tile.type != 0){
-				free = false;
-			}
-		}
+
 		return(free);
 	}
 
@@ -74,24 +100,28 @@ class Map{
 		var tile = this.GetTile(x, y);
 		tile.hp -= damage;
 
-		if(tile.hp <= 0){
-			this.RemoveTile(x, y);
-		}
+		if(this.isServer)
+			if(tile.hp <= 0){
+				this.RemoveTile(x, y);
+			}
 	}
 
 	RemoveTile(x, y){
 		if(this.isServer){
-			if(this.tileMap[x][y].type != 0){
-				this.tileMap[x][y].type = 0;
+			if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
+				this.tileMap[x][y].type = 2;
 				var tile = {x: x, y: y};
-				this.pendingRemovedTiles.push(tile);
-				console.log("removed Tile "+tile.x+", "+tile.y);				
+				tile.hp = 0;
+				this.pendingChangedTiles.push(tile);
+	//			console.log("removed Tile "+tile.x+", "+tile.y);
 			}
 		}
 		else{
-			if(this.tileMap[x][y].type != 0){
-				this.tileMap[x][y].type = 0;
-				this.map.removeTile(x, y, 1);
+			if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
+				this.tileMap[x][y].type = 2;
+				this.map.putTile(2, x, y, this.rocksLayer);
+//				DeleteSprite(this.tileMap[x][y].sprite);
+//				this.map.removeTile(x, y, 1);
 			}
 		}
 	}
@@ -128,6 +158,8 @@ class Map{
 		return(map);
 	}
 }
+
+
 
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser

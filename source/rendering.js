@@ -2,6 +2,8 @@
 var logo;
 //array of all the graphic game objects
 var objects = [];
+var spritesheet;
+var spriteBatch;
 
 var upKey;
 var downKey;
@@ -18,21 +20,22 @@ Sprite = function(index, name){
 
 //sprite functions
 function Preload () {
-//    game.plugins.add(Phaser.Plugin.Tiled);
     game.load.image('red', "red.png");
     game.load.image('blue', "blue.png");
-    game.load.tilemap('map100x100', 'assets/map100x100.json', null, Phaser.Tilemap.TILED_JSON);
-    game.load.image('tiles1024', 'assets/tiles1024.png');
-//  var mapCacheKey = Phaser.Plugin.Tiled.utils.cacheKey;
-//  game.load.tiledmap(mapCacheKey('map', 'tiledmap'), 'assets/map100x100.json', null, Phaser.Tilemap.TILED_JSON);
-//  game.load.image(mapCacheKey('map', 'tileset', 'Tile Layer 1'), 'assets/tiles1024.png');
-//  game.load.image(mapCacheKey('map', 'layer', 'Tile Layer 1'), 'assets/tiles1024.png');
+    game.load.image('sea', "assets/3.png");
+    game.load.spritesheet('spritesheet', 'assets/spritesheet.png', 16, 16, 4);
+    console.log("spritesheet loaded");
+//    game.load.tilemap('map100x100', 'assets/map100x100.json', null, Phaser.Tilemap.TILED_JSON);
+//    game.load.atlasJSONHash('spritesheet', 'assets/spritesheet.png', 'assets/spritesheet.json');
 
 }
 
 function Create () {
+
+    spriteBatch = game.add.spriteBatch();
     game.stage.backgroundColor = "#2d2d2d";
-	game.stage.smoothed = false;
+    game.stage.smoothed = false;
+
 //    logo = game.add.sprite(0, 0, 'logo');
 //    logo.anchor.setTo(0.5, 0.5);
     upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
@@ -50,8 +53,8 @@ function Create () {
 }
 
 function SetSpritePosition(sprite, pos){
-    sprite.x = Math.round(pos.x*16);
-    sprite.y = Math.round(pos.y*16);
+    sprite.x = Math.round(pos.x*tileSize);
+    sprite.y = Math.round(pos.y*tileSize);
 }
 
 function SetCameraPosition(pos){
@@ -65,22 +68,31 @@ function GetSpritePosition(sprite){
     return(pos);
 }
 
-function AddSprite(name, cords){
-	var sprite = game.add.sprite(cords.x*tileSize, cords.y*tileSize, name);
-
-//	sprite.anchor.setTo(0.5, 0.5);
-
- //  sprite.scale.set(gameScale);
-  // console.log("sprite scale: "+spriteScale+"*"+scaleRatio);
+function AddSprite(name, cords, index){
+    if(typeof(index) == 'undefined')
+    {
+        var sprite = game.add.sprite(cords.x*tileSize, cords.y*tileSize, name); 
+    }
+    else
+    {
+        var sprite = game.make.sprite(cords.x*tileSize, cords.y*tileSize, name, index);
+        spriteBatch.addChild(sprite);
+//        console.log("adding sprites");
+    }
+//  sprite.anchor.setTo(0.5, 0.5);
     sprite.index = objects.length;
-	objects.push(sprite);
-	return(sprite);
+    objects.push(sprite);
+    return(sprite);
+}
+
+function SetCameraTarget(sprite){
+    game.camera.follow(sprite);
 }
 
 function DeleteSprite(sprite){
     var index = sprite.index;
     sprite.destroy();
-	objects.splice(index, 1);
+    objects.splice(index, 1);
 }
 
 function GetAngle(obj1, obj2) {

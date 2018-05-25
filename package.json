@@ -11,6 +11,7 @@
     "express": "^4.16.3",
     "node-uuid": "^1.4.8",
     "phaser-ce": "^2.10.3",
+    "proc-noise": "0.0.1",
     "socket.io": "^2.0.4"
   }
 }

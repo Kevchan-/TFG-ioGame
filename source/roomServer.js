@@ -118,6 +118,8 @@ class GameRoom{
 
 	StartGame(newPlayer){
 		var playersState = {};
+		playersState.tileMap = this.game.map.tileMap;
+
 		if(!newPlayer){	//if no new player is specified then its the first players needed for the game to start
 			this.active = true;
 			this.game.ServerStartGame();
@@ -133,19 +135,18 @@ class GameRoom{
 				}
 			}
 
+		console.log(playersState.tileMap.width);
 			playersState = JSON.stringify(playersState);
-			console.log("positions: "+playersState);
+//			console.log("positions: "+playersState);
 
 			for(var playerId in this.playerClients){
 				if(this.playerClients.hasOwnProperty(playerId)){
 					//we send all every starting position
 					this.playerClients[playerId].send('s.'+playersState);
 				}
-			}			
+			}
 		}
 		else{
-
-			console.log("entered");
 			for(var playerId in this.playerClients){
 				if(this.playerClients.hasOwnProperty(playerId)){
 					//get every player's starting position
@@ -161,8 +162,6 @@ class GameRoom{
 			playersState = JSON.stringify(playersState);
 			newPlayer.send('s.'+playersState);
 		}
-
-
 	}
 
 	EndGame(){

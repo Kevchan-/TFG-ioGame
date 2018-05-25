@@ -23,7 +23,7 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 	}
 	width = Math.round(width);
 	height = Math.round(height);
-	var game = new Phaser.Game(width, height, Phaser.CANVAS, '', { preload: Preload, create: Create }, false, false);
+	var game = new Phaser.Game(width, height, Phaser.WEBGL, '', { preload: Preload, create: Create }, false, false);
 	
 //	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
@@ -52,7 +52,7 @@ class GameCore{
 		}
 
 		if(this.server){
-
+			this.map = new GameMap("map100x100", true);
 		}
 		else{
 			this.ClientConnectToServer();
@@ -92,7 +92,6 @@ class GameCore{
 
 	ServerStartGame(map){
 		this.active = true;
-		this.map = new GameMap("map100x100", true);
 		this.Update();
 	}
 
@@ -109,25 +108,27 @@ class GameCore{
 				state[playerid].pos = this.players[playerid].pos;
 				state[playerid].destination = this.players[playerid].destination;
 				state[playerid].moving = this.players[playerid].moving;
-				state[playerid].reached = this.players[playerid].reached;
-				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;					
-
+				state[playerid].reached = this.players[playerid].reached;			
+				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;
+//		console.log(state[playerid].reached);
 			}
 		}
 
-		state.removedTiles = {};
+		if(this.map.pendingChangedTiles.length)
+			state.tilesState = {};
 
-		for(var tile in this.map.pendingRemovedTiles){
-			if(this.map.pendingRemovedTiles.hasOwnProperty(tile)){
-				var removedTile = this.map.pendingRemovedTiles[tile];
-				state.removedTiles[removedTile.x+"x"+removedTile.y] = {};
-				state.removedTiles[removedTile.x+"x"+removedTile.y].x = removedTile.x;
-				state.removedTiles[removedTile.x+"x"+removedTile.y].y = removedTile.y;
-				state.removedTiles[removedTile.x+"x"+removedTile.y].drop = "no";
+		for(var tiles in this.map.pendingChangedTiles){
+			if(this.map.pendingChangedTiles.hasOwnProperty(tiles)){
+				var tile = this.map.pendingChangedTiles[tiles];
+				state.tilesState[tile.x+"x"+tile.y] = {};
+				state.tilesState[tile.x+"x"+tile.y].x = tile.x;
+				state.tilesState[tile.x+"x"+tile.y].y = tile.y;
+				state.tilesState[tile.x+"x"+tile.y].hp = tile.hp;
+				state.tilesState[tile.x+"x"+tile.y].drop = "no";
 			}
 		}
 
-		this.map.pendingRemovedTiles = [];
+		this.map.pendingChangedTiles = [];
 
 		state.serverTime = serverTime;
 		state.serverDeltaTime = this.localDeltaTime;
@@ -233,12 +234,18 @@ class GameCore{
 				}
 			}
 
-			var serverRemovedTiles = state.removedTiles;
+			var serverChangedTiles = state.tilesState;
 
-			for(var tile in serverRemovedTiles){
-				if(serverRemovedTiles.hasOwnProperty(tile)){
-					var rTile = serverRemovedTiles[tile];
-					this.map.RemoveTile(rTile.x, rTile.y);
+			if(serverChangedTiles){
+				//console.log(serverChangedTiles);
+			}
+
+			for(var tile in serverChangedTiles){
+				if(serverChangedTiles.hasOwnProperty(tile)){
+					var rTile = serverChangedTiles[tile];
+					if(rTile.hp <= 0){
+						this.map.RemoveTile(rTile.x, rTile.y);						
+					}
 				}
 			}
 		}
@@ -248,7 +255,7 @@ class GameCore{
 		var state = JSON.parse(data);
 		this.serverUpdates.push(state);
 
-		this.selfPlayer.ClientServerReconciliation(this.serverUpdates);
+		//this.selfPlayer.ClientServerReconciliation(this.serverUpdates);
 		
 		if(this.entityInterpolation){
 			for(var playerid in this.players){
@@ -263,7 +270,6 @@ class GameCore{
 		if(this.serverUpdates.length >= 100){
 			this.serverUpdates.splice(0, 1);
 		}
-
 	}
 
 	ClientAddPlayer(clientId){
@@ -286,16 +292,18 @@ class GameCore{
 	}
 
 	ClientOnGameStart(data){
-		var playersPositions = JSON.parse(data);
+		var parsedData = JSON.parse(data);
 		this.active = true;
-		this.map = new Map('map100x100');
-		this.selfPlayer.pos = playersPositions[this.selfPlayer.id];
+		var tilemap = parsedData.tileMap;
+//		console.log(tilemap);
+		this.map = new Map(tilemap);
+		this.selfPlayer.pos = parsedData[this.selfPlayer.id];
 		this.selfPlayer.CreateSprite();
 
 		for(var playerId in this.players){
 			if(this.players.hasOwnProperty(playerId)){
 //				console.log(playersPositions[playerId]);
-				this.players[playerId].pos = playersPositions[playerId];
+				this.players[playerId].pos = parsedData[playerId];
 				this.players[playerId].CreateSprite();
 			}
 		}
