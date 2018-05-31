@@ -477,7 +477,7 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 //		console.log("New Sprite");
 			this.sprite = AddSprite('red', cords);
-//			this.sprite.visible = false;
+			this.serverSprite.visible = false;
 //			SetCameraTarget(this.sprite);
 		}
 		else{
