@@ -268,7 +268,8 @@ class Player{
 			if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){	//if we already reached 
 				this.reached = true;
 				this.moving = false;	//then don't move at all this frame and mark as not moving
-				if(input.key !== "n"){	//check for input the same frame so that we don't stop
+	
+	/*			if(input.key !== "n"){	//check for input the same frame so that we don't stop
 					var destination = this.GetDestination(input.key, this.game.map);
 					if(destination.state != 'hit'){
 						this.destination = destination;
@@ -282,7 +283,7 @@ class Player{
 						newDestination = 'hit';
 						this.hitting = true;
 					}
-				}
+				}*/
 			}
 			else{	//we not there
 				this.reached = false;
