@@ -1,4 +1,4 @@
-var serverUpdatesPerSecond = 20;	//on server we update preferiby 20 times per second
+var serverUpdatesPerSecond = 30;	//on server we update preferiby 20 times per second
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser	
 	var PlayerObject = require('./player.js');
@@ -109,8 +109,12 @@ class GameCore{
 				state[playerid].destination = this.players[playerid].destination;
 				state[playerid].moving = this.players[playerid].moving;
 				state[playerid].reached = this.players[playerid].reached;			
+				state[playerid].hitting = this.players[playerid].hitting;			
 				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;
-//		console.log(state[playerid].reached);
+						//		console.log("Server update: "+state[playerid].pos.x+", "+state[playerid].pos.y);
+//				if(state[playerid].reached){
+//				}
+//		console.log("Reached: "+state[playerid].reached);
 			}
 		}
 
@@ -128,7 +132,10 @@ class GameCore{
 			}
 		}
 
-//		this.map.pendingChangedTiles = [];
+
+	    if(this.map.pendingChangedTiles.length>=3){
+			  this.map.pendingChangedTiles.splice(0, 1);
+	    }
 
 		state.serverTime = serverTime;
 		state.serverDeltaTime = this.localDeltaTime;
@@ -217,6 +224,7 @@ class GameCore{
 	ClientProcessNetUpdates(){	//called on the update loop
 		if(this.serverUpdates.length){
 			var state = this.serverUpdates[this.serverUpdates.length-1];
+	//		console.log("Server update: "+state[this.selfPlayer.id].pos.x+", "+state[this.selfPlayer.id].pos.y);
 			var debugPos = state[this.selfPlayer.id].pos;
 
 			if(debugDrawing){
@@ -244,7 +252,7 @@ class GameCore{
 				if(serverChangedTiles.hasOwnProperty(tile)){
 					var rTile = serverChangedTiles[tile];
 					if(rTile.hp <= 0){
-						this.map.RemoveTile(rTile.x, rTile.y);						
+						this.map.RemoveTile(rTile.x, rTile.y);
 					}
 				}
 			}
@@ -255,7 +263,11 @@ class GameCore{
 		var state = JSON.parse(data);
 		this.serverUpdates.push(state);
 
-		//this.selfPlayer.ClientServerReconciliation(this.serverUpdates);
+//		console.log("Update received: "+state[this.selfPlayer.id].pos.x+", "+state[this.selfPlayer.id].pos.y);
+		var lastState = this.serverUpdates[this.serverUpdates.length-1];
+//		console.log(lastState[this.selfPlayer.id].pos.x+", "+lastState[this.selfPlayer.id].pos.y);
+
+		this.selfPlayer.ClientServerReconciliation(lastState);
 		
 		if(this.entityInterpolation){
 			for(var playerid in this.players){
@@ -267,7 +279,7 @@ class GameCore{
 				}
 			}
 		}
-		if(this.serverUpdates.length >= 100){
+		if(this.serverUpdates.length >= 30){
 			this.serverUpdates.splice(0, 1);
 		}
 	}
@@ -298,6 +310,8 @@ class GameCore{
 //		console.log(tilemap);
 		this.map = new Map(tilemap);
 		this.selfPlayer.pos = parsedData[this.selfPlayer.id];
+
+//		console.log(this.destination.x+", "+this.destination.y);
 		this.selfPlayer.CreateSprite();
 
 		for(var playerId in this.players){

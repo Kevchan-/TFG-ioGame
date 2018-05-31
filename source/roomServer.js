@@ -131,11 +131,12 @@ class GameRoom{
 					cords.x = Math.floor(Math.random()*(20));
 					cords.y = Math.floor(Math.random()*(20));
 					this.game.players[playerId].pos = cords;
+					this.game.players[playerId].destination = cords;
 					playersState[playerId] = this.game.players[playerId].pos;
 				}
 			}
 
-		console.log(playersState.tileMap.width);
+		//console.log(playersState.tileMap.width);
 			playersState = JSON.stringify(playersState);
 //			console.log("positions: "+playersState);
 
@@ -158,6 +159,7 @@ class GameRoom{
 			cords.x = Math.floor(Math.random()*(20));
 			cords.y = Math.floor(Math.random()*(20));
 			this.game.players[newPlayer.userid].pos = cords;
+			this.game.players[newPlayer.userid].destination = cords;
 			playersState[newPlayer.userid] = this.game.players[newPlayer.userid].pos;
 			playersState = JSON.stringify(playersState);
 			newPlayer.send('s.'+playersState);

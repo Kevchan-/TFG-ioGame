@@ -12,11 +12,12 @@ class Player{
 		this.inputs = [];	//serverside
 		this.pendingInputs = [];	//inputs for when we reconciliate with server, clientside only
 		this.pendingIterationDeltaTimes = [];	//for reconciliation. Since we don't store inputs that don't change the destination tile, we need to store the deltaTimes of every iteration here
+		this.pidtCounters = [];
 		this.lastProcessedInput = -1;				//for reconc., index of last processed input
 		this.positionBuffer = [];	//clientside, save previous positions here for interpolation
 		this.lastInputSequenceNumber = 0;
 		this.isSelf = isSelf;
-		this.state = 'not connected';	
+		this.state = 'not connected';
 		this.test = 0;
 
 		if(this.socket){
@@ -46,6 +47,7 @@ class Player{
 		};
 
 		this.moving = false;	//if traveling to the destination tile
+		this.reached = true;
 		this.hitting = false;	//if drill animation on
 		this.hitAnimationDuration = 0.2;
 		this.hitAnimationCounter = 0;
@@ -64,56 +66,87 @@ class Player{
 	}
 
 	//process messages from server reggarding our position. do server reconciliation
-	ClientServerReconciliation(netUpdates){
+	ClientServerReconciliation(netUpdate){
 		//test on net
 	
-		var latestUpdate = netUpdates[netUpdates.length-1];
+		var latestUpdate = netUpdate;
+		var serverDestination = latestUpdate[this.id].destination;
 		var myServerPos = latestUpdate[this.id].pos;
 		var serverSequence = latestUpdate[this.id].inputSequence;
 
-
 		var i = 0;
 
-		if(latestUpdate[this.id].reached){
+		var pdinputs = this.pendingInputs;
+//		console.log(pdinputs);
+
+		if(!this.moving)
 			while(i < this.pendingInputs.length){
 				if(this.pendingInputs[i].sequenceNumber >= serverSequence){
-					console.log(i+" serverSequence: "+serverSequence+", input sequence: "+this.pendingInputs[i].sequenceNumber);
+//					console.log(i+" serverSequence: "+serverSequence+", input sequence: "+this.pendingInputs[i].sequenceNumber);
 
 					var input = this.pendingInputs[i];
 					var index = input.sequenceNumber+1;
 //					console.log(index);
+					
+					var inputPos = input.pos;
+					var inputDestination = input.destination;
 
-//					console.log(i+" inputSequence: "+index);
-					if(this.pendingIterationDeltaTimes[index]){
-						console.log("exists");
-						var auxMoving = this.moving;
-						var auxDestination = this.destination;		
-						var auxPos = this.pos;	//to check if positions match after the reconciliation
+//					console.log("Server destination: "+serverDestination.x+", "+serverDestination.y);
+//					console.log("Input position: "+inputPos.x+", "+inputPos.y);
+//					console.log("Input destination: "+inputPos.x+", "+inputPos.y);
+					
+					if(inputPos.x == serverDestination.x && inputPos.y == serverDestination.y){
 
+					}
+					else if(inputDestination.x == serverDestination.x && inputDestination.y == serverDestination.y){
+
+					}
+					else{
 						this.pos = myServerPos;
 						this.moving = latestUpdate[this.id].moving;
-						this.destination = latestUpdate[this.id].destination;
+						this.destination = serverDestination;
+						this.hitting = latestUpdate[this.id].hitting;
 
-						this.ApplyInput(input);
-					//get delta time
-						for(var j = 0; j < this.pendingIterationDeltaTimes[index].length; j++){
-							var deltaTime = this.pendingIterationDeltaTimes[index][j];
-							this.UpdatePhysics(deltaTime, true);
-						}
-
-		console.log("Server position: "+myServerPos.x+", "+myServerPos.y);
-		console.log("Client position: "+auxPos.x+", "+auxPos.y);
-		console.log("Reconc position: "+this.pos.x+", "+this.pos.y);
-						this.moving = auxMoving;
-						this.destination = auxDestination;
+//						console.log("FIXING POSITION");
 					}
+
+//					console.log(i+" inputSequence: "+index);
+	/*					if(this.pendingIterationDeltaTimes[index]){
+							console.log("exists");
+							var auxMoving = this.moving;
+							var auxDestination = this.destination;
+
+
+//							var auxPos = {};
+//							auxPos.x = this.pos.x;	//to check if positions match after the reconciliation
+//							auxPos.y = this.pos.y
+
+//							this.pos = myServerPos;
+//							console.log("this pos: "+this.pos.x+", "+this.pos.y);
+//							this.moving = latestUpdate[this.id].moving;
+//							this.destination = latestUpdate[this.id].destination;
+/*
+							this.ApplyInput(input);
+						//get delta time
+							console.log("length: "+this.pidtCounters[index]);
+							for(var j = 0; j < this.pendingIterationDeltaTimes[index].length; j++){
+								var deltaTime = this.pendingIterationDeltaTimes[index][j];
+								console.log("moving: "+this.moving+", "+deltaTime);
+								this.UpdatePhysics(deltaTime, true);
+							}
+							
+//							console.log("Client position: "+auxPos.x+", "+auxPos.y);
+//							console.log("Reconc position: "+this.pos.x+", "+this.pos.y);
+//							this.moving = auxMoving;
+//							this.destination = auxDestination;
+						}*/
 					i++;
 				}
 				else{
 					this.pendingInputs.splice(i, 1);
 				}
 			}
-		}
+		
 	}
 
 	ClientProcessInputs(socket, time){	//we check the current inputs to store them for later reconciliation and send them to the server right now
@@ -149,6 +182,7 @@ class Player{
 			else{
 				input.key = "l";
 			}
+//		console.log("calling  process inputs");
 		}
 
 		else{
@@ -176,11 +210,13 @@ class Player{
 
 			input.id = this.id;
 			input.timeStamp = time.toString().replace(".", ",");
+			input.pos = this.pos;
+			input.destination = this.destination;
 
 			var serialized = JSON.stringify(input);
 			serialized = "i."+serialized;
 			this.game.socket.send(serialized);
-		//	this.pendingInputs.push(input);
+			this.pendingInputs.push(input);
 		}
 	}
 
@@ -194,6 +230,7 @@ class Player{
 
 		var numberOfInputs = this.inputs.length;
 
+		this.reached = false;
 		if(numberOfInputs){
 			for(var i = 0; i < numberOfInputs; i++){
 				if(this.inputs[i].sequenceNumber > this.lastInputSequenceNumber){
@@ -217,7 +254,9 @@ class Player{
 				}
 			}
 		}
+
 		if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){
+
 			this.reached = true;
 		}
 	}
@@ -270,26 +309,34 @@ class Player{
 
 
 	UpdatePhysics(deltaTime, reconciliation){
+
+//		console.log("moving: "+this.moving);
 		if(this.moving){
 			this.MoveToTile(this.destination, deltaTime);
 			//store the deltaTimes for server reconciliation
-/*
+			if(this.server){
+//				console.log("Physics update: "+this.pos.x+", "+this.pos.y);
+			}
 			if(reconciliation){
-					console.log("moving: "+this.moving+", "+deltaTime);
 			}
 			else if(!this.server){
 				if(!this.pendingIterationDeltaTimes[this.lastInputSequenceNumber]){
 					this.pendingIterationDeltaTimes[this.lastInputSequenceNumber] = [];
-						console.log("Saving dt iterations for input "+this.lastInputSequenceNumber);
-						console.log(this.pendingIterationDeltaTimes);
+					this.pidtCounters[this.lastInputSequenceNumber] = 0;
+			//			console.log("Saving dt iterations for input "+this.lastInputSequenceNumber);
+						var newArray = this.pendingIterationDeltaTimes.slice();
+			//			console.log(newArray);
 				}
 				this.pendingIterationDeltaTimes[this.lastInputSequenceNumber].push(deltaTime);
-
+				this.pidtCounters[this.lastInputSequenceNumber]++;
+			//	console.log("length: "+this.pidtCounters[this.lastInputSequenceNumber]);
 				if(this.pendingIterationDeltaTimes.length >= 10){
 					this.pendingIterationDeltaTimes.splice(0, 1);
+					this.pidtCounters.splice(0,1);
 				}
-			}*/
 
+			//	console.log(this.pos.x+", "+this.pos.y);
+			}
 		}
 		else if(this.hitting){
 			if(this.hitAnimationCounter < this.hitAnimationDuration){
@@ -429,7 +476,8 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 //		console.log("New Sprite");
 			this.sprite = AddSprite('red', cords);
-			SetCameraTarget(this.sprite);
+//			this.sprite.visible = false;
+//			SetCameraTarget(this.sprite);
 		}
 		else{
 			this.sprite = AddSprite('blue', cords);
