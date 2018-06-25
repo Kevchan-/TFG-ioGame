@@ -2,7 +2,8 @@ var serverUpdatesPerSecond = 20;	//on server we update preferiby 20 times per se
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser	
 	var PlayerObject = require('./player.js');
-	var GameMap = require('./map.js');
+	var GameMap = require('./map.js');	
+	var SSCD = require('sscd').sscd;
 }else{
 	var debugDrawing = true;
 	var clientUpdateFrequency = 30;	//on client run at 60fps
@@ -23,15 +24,15 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 	}
 	width = Math.round(width);
 	height = Math.round(height);
-	var game = new Phaser.Game(width, height, Phaser.WEBGL, '', { preload: Preload, create: Create }, false, false);
+	var game = new Phaser.Game(width, height, Phaser.CANVAS, '', { preload: Preload, create: Create }, false, false);
 	
 //	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
 
 
-
 class GameCore{
 	constructor(room){
+
 		this.room = room;
 		this.server = false;	//is this run by the server or by a client
 		this.gameNet;
@@ -42,6 +43,8 @@ class GameCore{
 		this.playerCount = 0;
 		this.localTime = new Date().getTime();
 		this.serverUpdates = [];	//clientside only
+		this.pWorld = new SSCD.World({grid_size: 16*5});
+
 
 		this.active = false;
 
@@ -102,24 +105,45 @@ class GameCore{
 		for(var playerid in this.players){
 			if(this.players.hasOwnProperty(playerid)){
 				this.players[playerid].ServerProcessInputs();
-				this.players[playerid].UpdatePhysics(this.localDeltaTime);
+				this.players[playerid].Update(this.localDeltaTime);
 
 				state[playerid] = {};
+				if(this.players[playerid].dead && this.players[playerid].healthPoints <= 0){
+//						console.log("Spawn counter "+this.players[playerid].spawnCounter+", "+this.localDeltaTime);
+					if(this.players[playerid].spawnCounter <= this.players[playerid].spawnTime){
+						this.players[playerid].spawnCounter += this.localDeltaTime;
+					}
+					else{
+						var cords = {};
+						cords.x = Math.floor(Math.random()*(20));
+						cords.y = Math.floor(Math.random()*(20));
+						this.players[playerid].SetUpParameters(cords, playerid);
+						
+					}
+				}
+
+				state[playerid].healthPoints = this.players[playerid].healthPoints;
+				state[playerid].lastPersonWhoHit = this.players[playerid].lastPersonWhoHit;
+
+				if(this.players[playerid].healthPoints <= 0 && !this.players[playerid].dead){
+					this.players[playerid].KillPlayer();
+				}
+
+//				console.log("Health: "+state[playerid].healthPoints);
 				state[playerid].pos = this.players[playerid].pos;
+				state[playerid].dead = this.players[playerid].dead;
 				state[playerid].destination = this.players[playerid].destination;
 				state[playerid].moving = this.players[playerid].moving;
-				state[playerid].reached = this.players[playerid].reached;			
-				state[playerid].hitting = this.players[playerid].hitting;			
+				state[playerid].hitting = this.players[playerid].hitting;
+				state[playerid].lastTile = this.players[playerid].lastTile;
 				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;
 						//		console.log("Server update: "+state[playerid].pos.x+", "+state[playerid].pos.y);
-//				if(state[playerid].reached){
-//				}
-//		console.log("Reached: "+state[playerid].reached);
 			}
 		}
 
-		if(this.map.pendingChangedTiles.length)
+		if(this.map.pendingChangedTiles.length){
 			state.tilesState = {};
+		}
 
 		for(var tiles in this.map.pendingChangedTiles){
 			if(this.map.pendingChangedTiles.hasOwnProperty(tiles)){
@@ -158,7 +182,7 @@ class GameCore{
 	ClientUpdate(deltaTime){	
 		//process server messages
 		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime);
-		this.selfPlayer.UpdatePhysics(this.localDeltaTime);
+		this.selfPlayer.Update(this.localDeltaTime);
 		this.ClientProcessNetUpdates();
 
 	}
@@ -170,7 +194,7 @@ class GameCore{
 
 		for(var playerid in this.players){
 			if(this.players.hasOwnProperty(playerid)){
-				if(this.selfPlayer.id != playerid){
+				if(this.selfPlayer.id != playerid && !this.players[playerid].dead){
 
 					var buffer = this.players[playerid].positionBuffer;
 					if(buffer.length > 1){
@@ -231,6 +255,30 @@ class GameCore{
 				this.selfPlayer.SetServerPosition(debugPos);
 			}
 
+			this.selfPlayer.healthPoints = state[this.selfPlayer.id].healthPoints;
+			if(this.selfPlayer.healthPoints <= 0 && !this.selfPlayer.dead){
+				this.selfPlayer.KillPlayer(state[this.selfPlayer.id].lastPersonWhoHit);
+			}			
+
+			for(var playerid in this.players){
+				if(this.players.hasOwnProperty(playerid) && typeof(state[playerid]) != "undefined"){
+					if(typeof(state[playerid]) == "undefined"){
+						console.log(state);
+					}
+					var hp = state[playerid].healthPoints;
+					this.players[playerid].healthPoints = hp;
+	//				console.log("Health: "+this.players[playerid].healthPoints);
+
+					if(this.players[playerid].healthPoints <= 0 && !this.players[playerid].dead){
+						this.players[playerid].KillPlayer(state[playerid].lastPersonWhoHit);
+					}
+				}
+
+				if(this.players[playerid].dead && !state[playerid].dead){
+					this.players[playerid].SetUpParameters(this.players[playerid].pos, playerid);
+				}
+			}			
+
 			if(this.entityInterpolation){
 				this.ClientEntityInterpolation();
 			}
@@ -263,7 +311,12 @@ class GameCore{
 		var state = JSON.parse(data);
 		this.serverUpdates.push(state);
 
-//		console.log("Update received: "+state[this.selfPlayer.id].pos.x+", "+state[this.selfPlayer.id].pos.y);
+		if(this.selfPlayer.dead && !state[this.selfPlayer.id].dead){
+//				console.log("net revived position: "+state[this.selfPlayer.id].pos.x+", "+state[this.selfPlayer.id].pos.y);
+				this.selfPlayer.SetUpParameters(state[this.selfPlayer.id].pos, this.selfPlayer.id);
+			}
+
+//		console.log(state);
 		var lastState = this.serverUpdates[this.serverUpdates.length-1];
 //		console.log(lastState[this.selfPlayer.id].pos.x+", "+lastState[this.selfPlayer.id].pos.y);
 
@@ -287,12 +340,12 @@ class GameCore{
 	ClientAddPlayer(clientId){
 		if(this.playerCount == 0){
 			this.selfPlayer = new Player(this, null, true);
-			this.selfPlayer.id = clientId;
+			this.selfPlayer.SetUpParameters(this.selfPlayer.pos, clientId);
 //			console.log("Your player was created. You are: "+clientId);
 		}
 		else{
 			this.players[clientId] = new Player(this, null, false);
-			this.players[clientId].id = clientId;
+			this.players[clientId].SetUpParameters(this.players[clientId].pos, clientId);
 //			console.log("Player "+clientId+" created");
 
 			if(this.active){
@@ -389,6 +442,8 @@ class GameCore{
 	}
 
 }
+
+
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser
 	module.exports = GameCore;	

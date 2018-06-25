@@ -1,65 +1,148 @@
 var tileSize = 16;
 
+if(typeof(global) !== 'undefined'){
+	var SSCD = require('sscd').sscd;
+}
+
+function GetAngle(obj1, obj2) {
+// angle in radians
+//var angleRadians = Math.atan2(obj2.y - obj1.y, obj2.x - obj1.x);
+// angle in degrees
+var angleDeg = (Math.atan2(obj2.y - obj1.y, obj2.x - obj1.x) * 180 / Math.PI);
+return angleDeg;
+}
+
 class Player{
 	constructor(game, client, isSelf){
+
 		this.socket = client;
+		this.id = "";
 		this.game = game;
 		this.host = false;
 		this.server = false;
-		this.id = "";
-		this.sprite = {};	//clientside only
+		this.sprite = null;	//clientside only
 		this.serverSprite = {};		//debug server sprite position
+		this.receivedInput = false;
+		this.lastInputSequenceNumber = 0;
+
 		this.inputs = [];	//serverside
 		this.pendingInputs = [];	//inputs for when we reconciliate with server, clientside only
 		this.pendingIterationDeltaTimes = [];	//for reconciliation. Since we don't store inputs that don't change the destination tile, we need to store the deltaTimes of every iteration here
 		this.pidtCounters = [];
 		this.lastProcessedInput = -1;				//for reconc., index of last processed input
-		this.positionBuffer = [];	//clientside, save previous positions here for interpolation
-		this.lastInputSequenceNumber = 0;
-		this.isSelf = isSelf;
-		this.state = 'not connected';
-		this.test = 0;
+		this.positionBuffer = [];	
 
-		if(this.socket){
-//			console.log("Player created in server");
-			this.id = client.userid;
-			this.lastInputSequenceNumber = -1;
-			this.server = true;
-		}else{
-//			console.log("Player created");
-		}
-		
+		this.maxHealthPoints = 3;
+		this.healthPoints = this.maxHealthPoints;
+		this.immuneTime = 0.2;
+		this.damage = 1;
+		this.speed = 5;			//how much time it takes to move from tile to tile
+		this.hitAnimationDuration = 0.2;
+		this.spawnTime = 3;
+		this.dead = true;
+
+
 		this.pos = {
 			x: 0,
 			y: 0
 		};
-		
-//		console.log("Position: "+this.pos.x+", "+this.pos.y);
+
+		this.lastTile = {};
+		this.size = {
+			x: tileSize,
+			y: tileSize
+		};
 
 		this.destination = {	//the tile we're moving to, if we moving
 			x: 0,
 			y: 0
 		};
 
+		if(this.socket){
+//			console.log("Player created in server");
+			this.id = client.userid;
+			this.lastInputSequenceNumber = -1;
+			this.server = true;
+//			this.pObject = this.game.pWorld.add(new SSCD.Rectangle(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize), new SSCD.Vector(this.size.x/2, this.size.y/2)));		
+//			this.pObject.id = this.id;
+		}else{
+//			console.log("Player created");
+		}
+		this.isSelf = isSelf;
+	}
+
+	DataRecord(){
+		this.diedNTimes = 0;
+		this.killedN = 0;
+		this.points = 0;
+		this.tilesBroken = 0;
+	}
+
+	SetUpParameters(pos, id){
+
+		this.healthPoints = this.maxHealthPoints;
+		this.lastPersonWhoHit = null;
+
+		this.immuneCounter = 0;
+		this.hitAnimationCounter = 0;		
+		this.spawnCounter = 0;
+
+		this.hurt = false;
+		this.dead = false;
+
+		this.inputs = [];	//serverside
+		this.pendingInputs = [];	//inputs for when we reconciliate with server, clientside only
+		this.pendingIterationDeltaTimes = [];	//for reconciliation. Since we don't store inputs that don't change the destination tile, we need to store the deltaTimes of every iteration here
+		this.pidtCounters = [];
+		this.lastProcessedInput = -1;				//for reconc., index of last processed input
+		this.positionBuffer = [];	//clientside, save previous positions here for interpolation
+
+		this.moving = false;	//if traveling to the destination tile
+		this.reached = true;
+		this.coolingDown = false;	//if drill animation on
+
+		this.pos = pos;
+		
 		this.size = {
 			x: tileSize,
 			y: tileSize
 		};
 
-		this.moving = false;	//if traveling to the destination tile
-		this.reached = true;
-		this.hitting = false;	//if drill animation on
-		this.hitAnimationDuration = 0.2;
-		this.hitAnimationCounter = 0;
-		this.speed = 5;			//how much time it takes to move from tile to tile
-		this.damage = 1;
+		this.destination = {	//the tile we're moving to, if we moving
+			x: 0,
+			y: 0
+		};
+
+		this.id = id;
+		console.log("id "+this.id+" on game");
+
+		this.pObject = this.game.pWorld.add(new SSCD.Rectangle(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize), new SSCD.Vector(this.size.x/2, this.size.y/2)));		
+		this.pObject.id = id;
+
+		this.lastTile = {};
+		this.lastTile.x = Math.trunc(this.pos.x);
+		this.lastTile.y = Math.trunc(this.pos.y);
+
+		if(!this.server){
+			if(this.sprite){
+				this.sprite.visible = true;	
+				if(this.isSelf){
+					SetCameraTarget(this.sprite);					
+					this.SetPosition(this.pos);
+				}
+				console.log("revived position: "+this.pos.x+", "+this.pos.y);
+			}
+		}
 	}
+
+//	Initialize(id){	
+
+//	}
 
 	ServerStoreInput(data){
 		var data = JSON.parse(data);
 		var input = {};
 		input.timeStamp = data.timeStamp.replace(",",".");
-//		console.log(input.timeStamp);
 		input.key = data.key;
 		input.sequenceNumber = data.sequenceNumber;
 		this.inputs.push(input);
@@ -67,8 +150,13 @@ class Player{
 
 	//process messages from server reggarding our position. do server reconciliation
 	ClientServerReconciliation(netUpdate){
-		//test on net
-	
+		if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){
+			this.reached = true;
+		}
+		else{
+			this.reached = false;
+		}
+
 		var latestUpdate = netUpdate;
 		var serverDestination = latestUpdate[this.id].destination;
 		var myServerPos = latestUpdate[this.id].pos;
@@ -76,16 +164,15 @@ class Player{
 
 		var i = 0;
 
-		var pdinputs = this.pendingInputs;
 //		console.log(pdinputs);
 
-		if(!this.moving)
+		if(this.reached)
 			while(i < this.pendingInputs.length){
 				if(this.pendingInputs[i].sequenceNumber >= serverSequence){
 //					console.log(i+" serverSequence: "+serverSequence+", input sequence: "+this.pendingInputs[i].sequenceNumber);
 
 					var input = this.pendingInputs[i];
-					var index = input.sequenceNumber+1;
+					var index = input.sequenceNumber+1; 
 //					console.log(index);
 					
 					var inputPos = input.pos;
@@ -102,12 +189,13 @@ class Player{
 
 					}
 					else{
-						this.pos = myServerPos;
+						this.SetPosition(myServerPos);
 						this.moving = latestUpdate[this.id].moving;
 						this.destination = serverDestination;
-						this.hitting = latestUpdate[this.id].hitting;
+						this.coolingDown = latestUpdate[this.id].coolingDown;
+						this.lastTile = latestUpdate[this.id].lastTile;
 
-//						console.log("FIXING POSITION");
+						console.log("FIXING POSITION");
 					}
 
 //					console.log(i+" inputSequence: "+index);
@@ -146,7 +234,9 @@ class Player{
 					this.pendingInputs.splice(i, 1);
 				}
 			}
-		
+
+
+
 	}
 
 	ClientProcessInputs(socket, time){	//we check the current inputs to store them for later reconciliation and send them to the server right now
@@ -201,7 +291,7 @@ class Player{
 		}
 
 
-		var newDestination = this.ApplyInput(input);
+		var newDestination = this.ApplyInput(input, deltaTime);
 
 		if(newDestination || newDestination == 'hit'){
 			input.sequenceNumber = this.lastInputSequenceNumber;
@@ -231,11 +321,14 @@ class Player{
 		var numberOfInputs = this.inputs.length;
 
 		this.reached = false;
+
+		this.receivedInput = false;
 		if(numberOfInputs){
 			for(var i = 0; i < numberOfInputs; i++){
 				if(this.inputs[i].sequenceNumber > this.lastInputSequenceNumber){
+					this.receivedInput = true;
 					input.key = this.inputs[i].key;
-					var newDestination = this.ApplyInput(input);
+					var newDestination = this.ApplyInput(input, deltaTime);
 
 			//		console.log(this.inputs[i].sequenceNumber+": "+newDestination+", "+this.pos.x+", "+this.pos.y);
 					if(newDestination == "hit"){
@@ -252,6 +345,8 @@ class Player{
 					}
 					break;
 				}
+				else{
+				}
 			}
 		}
 
@@ -262,97 +357,141 @@ class Player{
 	}
 
 
-	ApplyInput(input){
+	ApplyInput(input, deltaTime){
 		var newDestination = false;
-		if(this.moving && !this.hitting){
+
+		if(this.moving && !this.coolingDown){
 			if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){	//if we already reached 
 				this.reached = true;
 				this.moving = false;	//then don't move at all this frame and mark as not moving
+//				console.log("moving set to false");
+
+
+				this.lastTile.x = Math.trunc(this.pos.x);
+				this.lastTile.y = Math.trunc(this.pos.y);
 	
-	/*			if(input.key !== "n"){	//check for input the same frame so that we don't stop
+				if(input.key !== "n"){	//check for input the same frame so that we don't stop
 					var destination = this.GetDestination(input.key, this.game.map);
 					if(destination.state != 'hit'){
 						this.destination = destination;
+						this.lastDirectionInput = input.key;
 						this.moving = true;
 						newDestination = true;
-						this.reached = false;
 					}
-					else{
+					else if(destination.state == 'hit'){
 //						console.log("tile "+destination.x+", " +destination.y);
 						this.HitTile(destination);
 						newDestination = 'hit';
-						this.hitting = true;
+						this.coolingDown = true;
 					}
-				}*/
+				}
 			}
 			else{	//we not there
 				this.reached = false;
 			}
 		}
-		else if(!this.hitting){
+		else if(!this.coolingDown){
 			if(input.key !== "n"){	//if we're not moving check for input that tells us to move
-				var destination = this.GetDestination(input.key, this.game.map);
+				var destination = this.GetDestination(input.key, this.game.map, deltaTime);
 				if(destination.state != 'hit'){
 					this.destination = destination;
 					this.moving = true;
+
+					this.lastDirectionInput = input.key;
 					newDestination = true;
+//					console.log("moving set to true");
 				}
-				else{
+				else if(destination.state == 'hit'){
 			//		console.log("tile "+destination.x+", " +destination.y);
 					this.HitTile(destination);
 					newDestination = 'hit';
-					this.hitting = true;
+					this.coolingDown = true;
+				}
+				else if(destination.state == 'attack'){
+
 				}
 			}
 		}
 		return(newDestination);
 	}
 
+	Update(deltaTime){
+		if(!this.dead){
+			if(this.hurt){
+				if(this.immuneCounter < this.immuneTime){
+					this.immuneCounter += deltaTime;
+				}
+				else{
+					this.hurt = false;
+					this.immuneCounter = 0;
+				}
+			}
 
-	UpdatePhysics(deltaTime, reconciliation){
+			this.UpdatePhysics(deltaTime);
+		}
+
+	}
+
+	UpdatePhysics(deltaTime){
+
+//		console.log(this.id);
+//		console.log(this.game.pWorld.pick_object(rect));
 
 //		console.log("moving: "+this.moving);
+
+		if(this.server){
+			if(!this.receivedInput){
+				if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){
+					this.moving = false;
+					this.reached = true;
+					if(typeof(this.lastTile) != "undefined"){
+						this.lastTile.x = Math.trunc(this.pos.x);
+						this.lastTile.y = Math.trunc(this.pos.y);						
+					}					
+				}
+			}
+		}
+
 		if(this.moving){
 			this.MoveToTile(this.destination, deltaTime);
 			//store the deltaTimes for server reconciliation
 			if(this.server){
 //				console.log("Physics update: "+this.pos.x+", "+this.pos.y);
 			}
-			if(reconciliation){
-			}
 			else if(!this.server){
-				if(!this.pendingIterationDeltaTimes[this.lastInputSequenceNumber]){
-					this.pendingIterationDeltaTimes[this.lastInputSequenceNumber] = [];
-					this.pidtCounters[this.lastInputSequenceNumber] = 0;
+			//	if(!this.pendingIterationDeltaTimes[this.lastInputSequenceNumber]){
+//					this.pendingIterationDeltaTimes[this.lastInputSequenceNumber] = [];
+//					this.pidtCounters[this.lastInputSequenceNumber] = 0;
 			//			console.log("Saving dt iterations for input "+this.lastInputSequenceNumber);
-						var newArray = this.pendingIterationDeltaTimes.slice();
+			//			var newArray = this.pendingIterationDeltaTimes.slice();
 			//			console.log(newArray);
-				}
-				this.pendingIterationDeltaTimes[this.lastInputSequenceNumber].push(deltaTime);
-				this.pidtCounters[this.lastInputSequenceNumber]++;
+			//	}
+//				this.pendingIterationDeltaTimes[this.lastInputSequenceNumber].push(deltaTime);
+//				this.pidtCounters[this.lastInputSequenceNumber]++;
 			//	console.log("length: "+this.pidtCounters[this.lastInputSequenceNumber]);
-				if(this.pendingIterationDeltaTimes.length >= 10){
-					this.pendingIterationDeltaTimes.splice(0, 1);
-					this.pidtCounters.splice(0,1);
-				}
+//				if(this.pendingIterationDeltaTimes.length >= 10){
+//					this.pendingIterationDeltaTimes.splice(0, 1);
+//					this.pidtCounters.splice(0,1);
+//				}
 
 			//	console.log(this.pos.x+", "+this.pos.y);
 			}
 		}
-		else if(this.hitting){
+		else if(this.coolingDown){
 			if(this.hitAnimationCounter < this.hitAnimationDuration){
 				this.hitAnimationCounter += deltaTime;
 				//do stuff
-//				console.log("hitting");
+//				console.log("coolingDown");
 			}
 			else{
 				this.hitAnimationCounter = 0;
-				this.hitting = false;
+				this.coolingDown = false;
 			}
 		}
 	}
 
-	GetDestination(key, map){
+
+	GetDestination(key, map, deltaTime){
 		var tile = {};
 		tile.x = Math.trunc(this.pos.x);
 		tile.y = Math.trunc(this.pos.y);
@@ -371,16 +510,122 @@ class Player{
 				tile.x = tile.x - 1;
 				break;
 		}
+		if(tile.x < 0 || tile.y < 0 || tile.x > 20 || tile.y > 20){
 
+		}
 		if(!map.IsTileFree(tile.x, tile.y)){
 			tile.state = "hit";
 	//		console.log("tile "+tile.x+", " +tile.y);
 		}
+
 		return(tile);
 	}
 
+
+
 	HitTile(tilePos){
 		this.game.map.HitTile(tilePos.x, tilePos.y, this.damage);
+	}
+
+	ReceiveAttack(damage, attackerId){
+		this.lastPersonWhoHit = attackerId;
+		this.healthPoints -= damage;
+	}
+
+	KillPlayer(killerId){
+		this.dead = true;
+		this.killedN++;
+//		this.pObject.set_position()
+		this.game.pWorld.remove(this.pObject);
+		delete this.pObject;
+		console.log(this.id+" died");
+//		console.log(this.game.pWorld);
+	
+		if(!this.server){
+			this.sprite.visible = false;
+			if(this.isSelf){
+				console.log("following "+killerId);
+				SetCameraTarget(this.game.players[killerId].sprite);
+			}
+		}
+	}
+
+	LookForCollisions(pos){
+		var collision_list = [];
+		var rect = new SSCD.Rectangle(new SSCD.Vector(pos.x*tileSize, pos.y*tileSize), new SSCD.Vector(this.size.x/2, this.size.y/2));
+		var colliders_ids = [];
+
+//console.log("Rect: "+rect.pos.x+", "+rect.pos.y);
+
+		if(this.game.pWorld.test_collision(rect, undefined, collision_list)){
+//			console.log(collision_list);
+			for(var i = 0; i < collision_list.length; i++){
+//				console.log("hit: "+collision_list[i].id);
+				if(typeof(collision_list[i].id) != "undefined")
+					if(collision_list[i].id != this.id){
+						console.log("hit: "+collision_list[i].id);
+						colliders_ids.push(collision_list[i].id);
+					}
+			}
+		}
+		return(colliders_ids);
+	}
+
+	ResolveCollision(colliders){
+		var aux = this.lastTile;
+		this.destination = aux;
+//		console.log("pre: "+this.lastTile.x+", "+this.lastTile.y);
+//		console.log("pos: "+this.pos.x+", "+this.pos.y);
+//			this.previousTile = this.destination;
+
+		for(var i = 0; i < colliders.length; i++){
+			var angle = GetAngle(this.game.players[colliders[i]].pos, this.pos);
+			var hit = false;
+
+			if(angle >= -45 && angle <= 45){
+//				console.log("direction l");
+				if(this.lastDirectionInput == "l"){
+					hit = true;
+				}
+			}
+			else if(angle >=-135  && angle <= -45){
+//				console.log("direction d");
+				if(this.lastDirectionInput == "d"){
+					hit = true;
+				}
+			}
+			else if(angle >=45 && angle <=135){
+//				console.log("direction u");				
+				if(this.lastDirectionInput == "u"){
+					hit = true;
+				}				
+			}	
+			else{
+//				console.log("direction r");				
+				if(this.lastDirectionInput == "r"){
+					hit = true;
+				}				
+			}
+
+			if(hit){
+				this.game.players[colliders[i]].ReceiveAttack(this.damage, this.id);
+			}
+		}
+
+		switch(this.lastDirectionInput){
+			case "u":
+				this.lastDirectionInput = "d";
+				break;
+			case "d":
+				this.lastDirectionInput = "u";
+				break;
+			case "r":
+				this.lastDirectionInput = "l";
+				break;
+			case "l":
+				this.lastDirectionInput = "r";
+				break;
+		}
 	}
 
 	MoveToTile(tilePos, deltaTime){	//moves to adjacent tile
@@ -411,11 +656,28 @@ class Player{
 		}
 
 		var simulatedPos = this.pos;
-		if(direction.x != 0)
-			simulatedPos.x = this.pos.x + direction.x*this.speed*deltaTime;
+		var playerCollision = false;
 
-		if(direction.y != 0)
-			simulatedPos.y = this.pos.y + direction.y*this.speed*deltaTime;		
+		if(direction.x != 0){
+			simulatedPos.x = this.pos.x + direction.x*this.speed*deltaTime;
+		}
+
+		if(direction.y != 0){
+			simulatedPos.y = this.pos.y + direction.y*this.speed*deltaTime;	
+		}
+
+		var physicsSimulatedPos = {}; 
+		physicsSimulatedPos.x = this.pos.x + direction.x*this.speed*0.016;
+		physicsSimulatedPos.y = this.pos.y + direction.y*this.speed*0.016;	
+		var collisions = this.LookForCollisions(physicsSimulatedPos);
+
+		if(collisions.length){
+				playerCollision = true;
+		}
+		if(playerCollision){
+			this.ResolveCollision(collisions);
+
+		}
 
 //		console.log("sim position: "+simulatedPos.x+", "+simulatedPos.y);
 
@@ -455,16 +717,28 @@ class Player{
 		if(!this.server){
 			this.SetPosition(this.pos);
 		}
+		else{
+			if(this.pObject){
+				this.pObject.set_position(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize));
+			}
+		}
 	}
 
 	SetPosition(pos){
 		this.pos.x = pos.x;
 		this.pos.y = pos.y;	
-		SetSpritePosition(this.sprite, pos);	//method on rendering
-		if(this.isSelf){
-		//	SetCameraPosition(GetSpritePosition(this.sprite));
+
+		if(this.pObject){
+			this.pObject.set_position(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize));
 		}
 		
+
+//		if(!this.isSelf){
+//		}
+		if(!this.server){
+			SetSpritePosition(this.sprite, pos);	//method on rendering
+//			this.game.pWorld.render(game.canvas);
+		}
 	}
 
 	SetServerPosition(pos){
@@ -475,10 +749,10 @@ class Player{
 		var cords = this.pos;
 		if(this.isSelf){
 			this.serverSprite = AddSprite('blue', cords);
-//		console.log("New Sprite");
 			this.sprite = AddSprite('red', cords);
+			this.sprite.visible = true;
 			this.serverSprite.visible = false;
-//			SetCameraTarget(this.sprite);
+			SetCameraTarget(this.sprite);			
 		}
 		else{
 			this.sprite = AddSprite('blue', cords);
@@ -487,6 +761,7 @@ class Player{
 
 	RemoveSprite(){
 		DeleteSprite(this.sprite);
+		this.game.pWorld.remove(this.pObject);
 	}
 }
 

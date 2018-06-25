@@ -95,10 +95,3 @@ function DeleteSprite(sprite){
     objects.splice(index, 1);
 }
 
-function GetAngle(obj1, obj2) {
-// angle in radians
-var angleRadians = Math.atan2(obj2.y - obj1.y, obj2.x - obj1.x);
-// angle in degrees
-var angleDeg = (Math.atan2(obj2.y - obj1.y, obj2.x - obj1.x) * 180 / Math.PI);
-return angleDeg;
-}

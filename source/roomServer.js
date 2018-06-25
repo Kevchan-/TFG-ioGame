@@ -132,6 +132,9 @@ class GameRoom{
 					cords.y = Math.floor(Math.random()*(20));
 					this.game.players[playerId].pos = cords;
 					this.game.players[playerId].destination = cords;
+					this.game.players[playerId].lastTile.x = cords.x
+					this.game.players[playerId].lastTile.y = cords.y
+					this.game.players[playerId].SetUpParameters(cords, playerId);
 					playersState[playerId] = this.game.players[playerId].pos;
 				}
 			}
@@ -160,6 +163,9 @@ class GameRoom{
 			cords.y = Math.floor(Math.random()*(20));
 			this.game.players[newPlayer.userid].pos = cords;
 			this.game.players[newPlayer.userid].destination = cords;
+			this.game.players[newPlayer.userid].lastTile.x = cords.x;
+			this.game.players[newPlayer.userid].lastTile.y = cords.y;
+			this.game.players[newPlayer.userid].SetUpParameters(cords, playerId);
 			playersState[newPlayer.userid] = this.game.players[newPlayer.userid].pos;
 			playersState = JSON.stringify(playersState);
 			newPlayer.send('s.'+playersState);

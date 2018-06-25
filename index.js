@@ -4,6 +4,7 @@ var http = require('http').Server(app);
 var io = require('socket.io')(http);
 var UUID = require('node-uuid');
 
+
 app.use(express.static(__dirname+'/public'));
 app.use(express.static(__dirname+'/source'));
 
