@@ -522,13 +522,11 @@ class Player{
 		return(tile);
 	}
 
-
-
 	HitTile(tilePos){
 		this.game.map.HitTile(tilePos.x, tilePos.y, this.damage);
 
 		if(!this.server){
-			if(emitter == null){
+			if(emitterTiles == null){
 				CreateEmitter(2);
 			}
 			ParticleBurst(2, tilePos, 5);
@@ -778,7 +776,6 @@ class Player{
 
 	RemoveSprite(){
 		DeleteSprite(this.sprite);
-		DestroyEmitters();
 		this.game.pWorld.remove(this.pObject);
 	}
 }
