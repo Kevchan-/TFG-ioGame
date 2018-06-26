@@ -366,7 +366,6 @@ class Player{
 				this.moving = false;	//then don't move at all this frame and mark as not moving
 //				console.log("moving set to false");
 
-
 				this.lastTile.x = Math.trunc(this.pos.x);
 				this.lastTile.y = Math.trunc(this.pos.y);
 	
@@ -429,6 +428,8 @@ class Player{
 
 			this.UpdatePhysics(deltaTime);
 		}
+
+
 
 	}
 
@@ -525,11 +526,24 @@ class Player{
 
 	HitTile(tilePos){
 		this.game.map.HitTile(tilePos.x, tilePos.y, this.damage);
+
+		if(!this.server){
+			if(emitter == null){
+				CreateEmitter(2);
+			}
+			ParticleBurst(2, tilePos, 5);
+		}
 	}
 
 	ReceiveAttack(damage, attackerId){
 		this.lastPersonWhoHit = attackerId;
 		this.healthPoints -= damage;
+		if(!this.server){
+			if(emitter == null){
+				CreateEmitter(1);
+			}
+			ParticleBurst(1, this.pos, 10);
+		}
 	}
 
 	KillPlayer(killerId){
@@ -609,6 +623,9 @@ class Player{
 
 			if(hit){
 				this.game.players[colliders[i]].ReceiveAttack(this.damage, this.id);
+				if(!this.server){
+					game.camera.shake(0.005, 100);
+				}
 			}
 		}
 
@@ -761,6 +778,7 @@ class Player{
 
 	RemoveSprite(){
 		DeleteSprite(this.sprite);
+		DestroyEmitters();
 		this.game.pWorld.remove(this.pObject);
 	}
 }
