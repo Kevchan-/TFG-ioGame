@@ -320,7 +320,7 @@ class Player{
 
 		var numberOfInputs = this.inputs.length;
 
-		this.reached = false;
+	//	this.reached = false;
 
 		this.receivedInput = false;
 		if(numberOfInputs){
@@ -352,7 +352,17 @@ class Player{
 
 		if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){
 
-			this.reached = true;
+//			this.reached = true;
+
+		}
+
+		if(this.reached){
+			var drop = this.game.map.drops[this.pos.x][this.pos.y];
+
+			if(drop){
+				this.game.map.RemoveDrop(drop);
+				//todo apply effects
+			}			
 		}
 	}
 
@@ -529,7 +539,9 @@ class Player{
 			if(emitterTiles == null){
 				CreateEmitter(2);
 			}
-			ParticleBurst(2, tilePos, 5);
+			setTimeout(
+				ParticleBurst.bind(this, 2, tilePos, 5), 100
+				);
 		}
 	}
 
@@ -540,7 +552,10 @@ class Player{
 			if(emitter == null){
 				CreateEmitter(1);
 			}
-			ParticleBurst(1, this.pos, 10);
+
+			setTimeout(
+				ParticleBurst.bind(this, 1, this.pos, 10), 100
+				);
 		}
 	}
 
@@ -697,29 +712,29 @@ class Player{
 //		console.log("sim position: "+simulatedPos.x+", "+simulatedPos.y);
 
 		//check if we reached the destination
-		var reached = false;
+		this.reached = false;
 
 		if(direction.x > 0){	//going right
 			if(Math.abs(simulatedPos.x) >= Math.abs(tilePos.x)){
-				reached = true;
+				this.reached = true;
 			}
 		}
 		else if(direction.x < 0){	//going left
 			if(Math.abs(simulatedPos.x) <= Math.abs(tilePos.x)){
-				reached = true;
+				this.reached = true;
 			}
 		}
 		else if(direction.y > 0){	//goin up
 			if(Math.abs(simulatedPos.y) >= Math.abs(tilePos.y)){
-				reached = true;
+				this.reached = true;
 			}
 		}
 		else if(direction.y < 0){	//going down
 			if(Math.abs(simulatedPos.y) <= Math.abs(tilePos.y)){
-				reached = true;
+				this.reached = true;
 			}
 		}
-		if(!reached){
+		if(!this.reached){
 			this.pos.x = simulatedPos.x;
 			this.pos.y = simulatedPos.y;
 		}else{
@@ -766,7 +781,7 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 			this.sprite = AddSprite('red', cords);
 			this.sprite.visible = true;
-			this.serverSprite.visible = false;
+			this.serverSprite.visible = true;
 			SetCameraTarget(this.sprite);			
 		}
 		else{

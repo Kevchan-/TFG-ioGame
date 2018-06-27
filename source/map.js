@@ -2,14 +2,25 @@ if(typeof(global)!== 'undefined'){
 	var fs = require('fs');
 	var noiseGen = require('proc-noise');
 	var Perlin = new noiseGen();
+	var DropClass = require('./drop.js');
 }
 
 class Map{
 	constructor(tilemap, isServer){
+		this.width = 50;
+		this.height = 50;
 		this.tileMap = [];
+		this.drops = [];
+		for(var i = 0; i < this.width; i++){
+			this.drops[i] = {};
+			for(var j = 0; j < this.height; j++){
+				this.drops[i][j] = null;
+			}
+		}
 //		this.map = {};
 		this.isServer = false;
 		this.pendingChangedTiles = [];	//serverside only
+		this.pendingDrops = [];	//serverside only
 
 		this.standardTileHp = 1;
 
@@ -48,8 +59,8 @@ class Map{
 			Perlin.noiseReseed();
 			this.noiseScale = 0.07;
 			this.isServer = true;
-			this.tileMap.height = 50;
-			this.tileMap.width = 50;
+			this.tileMap.height = this.height;
+			this.tileMap.width = this.width;
 		//	var mapData = this.ServerLoadJSON(mapName);
 		//	this.map = this.ServerParseMap(mapData);
 
@@ -65,6 +76,45 @@ class Map{
 				}
 			}
 		}
+	}
+
+	AddDrop(game, pos, type){
+		var tile = {};
+		tile.x = Math.trunc(pos.x);
+		tile.y = Math.trunc(pos.y);
+		var newDrop = {};
+
+		if(!this.isServer){
+			newDrop = new Drop(game, pos, type, this.isServer);
+		}
+		else{
+			newDrop = new DropClass(game, pos, type, this.isServer);
+		}
+		this.drops[tile.x][tile.y] = newDrop;
+	}
+
+	RemoveDrop(drop, pos){
+		var tile = {};
+		if(typeof(pos) == "undefined"){
+			tile = drop.pos;
+		}
+		else{
+			tile.x = Math.trunc(pos.x);
+			tile.y = Math.trunc(pos.y);
+		}
+
+		if(!this.isServer){
+			this.drops[tile.x][tile.y].RemoveSprite();
+		}
+		else{
+			var drop = {};
+			drop.x = tile.x;
+			drop.y = tile.y;
+			this.pendingDrops.push(drop)
+		}
+		delete this.drops[tile.x][tile.y]; 
+		this.drops[tile.x][tile.y] = null;
+
 	}
 
 	ServerGenerateTile(x, y){
@@ -107,8 +157,10 @@ class Map{
 	}
 
 	RemoveTile(x, y){
+		var deleted = false;
 		if(this.isServer){
 			if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
+				deleted = true;
 				this.tileMap[x][y].type = 2;
 				var tile = {x: x, y: y};
 				tile.hp = 0;
@@ -118,12 +170,15 @@ class Map{
 		}
 		else{
 			if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
+				deleted = true;
 				this.tileMap[x][y].type = 2;
 				this.map.putTile(2, x, y, this.rocksLayer);
 //				DeleteSprite(this.tileMap[x][y].sprite);
 //				this.map.removeTile(x, y, 1);
 			}
 		}
+
+		return(deleted);
 	}
 
 	ServerLoadJSON(mapName){

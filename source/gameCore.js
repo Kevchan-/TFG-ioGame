@@ -118,7 +118,6 @@ class GameCore{
 						cords.x = Math.floor(Math.random()*(20));
 						cords.y = Math.floor(Math.random()*(20));
 						this.players[playerid].SetUpParameters(cords, playerid);
-						
 					}
 				}
 
@@ -152,14 +151,35 @@ class GameCore{
 				state.tilesState[tile.x+"x"+tile.y].x = tile.x;
 				state.tilesState[tile.x+"x"+tile.y].y = tile.y;
 				state.tilesState[tile.x+"x"+tile.y].hp = tile.hp;
-				state.tilesState[tile.x+"x"+tile.y].drop = "no";
+				var randomDrop = Math.floor(Math.random()*5);
+
+				state.tilesState[tile.x+"x"+tile.y].drop = randomDrop;
+				var tilePos = {};
+				tilePos.x = tile.x;
+				tilePos.y = tile.y;
+				this.map.AddDrop(this, tilePos, randomDrop);
 			}
 		}
 
+		if(this.map.pendingDrops.length){
+			state.dropsState = {};
+		}
+
+		for(var drops in this.map.pendingDrops){
+			if(this.map.pendingDrops.hasOwnProperty(drops)){
+				var drop = this.map.pendingDrops[drops];
+				state.dropsState[drop.x+"x"+drop.y] = {};
+				state.dropsState[drop.x+"x"+drop.y].x = drop.x;
+				state.dropsState[drop.x+"x"+drop.y].y = drop.y;
+			}
+		}
 
 	    if(this.map.pendingChangedTiles.length>=3){
 			  this.map.pendingChangedTiles.splice(0, 1);
 	    }
+	    if(this.map.pendingDrops.length>=3){
+			  this.map.pendingDrops.splice(0, 1);
+	    }	    
 
 		state.serverTime = serverTime;
 		state.serverDeltaTime = this.localDeltaTime;
@@ -172,6 +192,10 @@ class GameCore{
 				this.players[playerid].socket.emit('onServerUpdate', serializedState);
 			}
 		}
+	}
+
+	GenerateDrop(tilePos, type){
+
 	}
 
 
@@ -300,7 +324,25 @@ class GameCore{
 				if(serverChangedTiles.hasOwnProperty(tile)){
 					var rTile = serverChangedTiles[tile];
 					if(rTile.hp <= 0){
-						this.map.RemoveTile(rTile.x, rTile.y);
+						var type = rTile.randomDrop;
+						var dropPos = {x: rTile.x, y: rTile.y};
+						if(this.map.RemoveTile(rTile.x, rTile.y)){
+							this.map.AddDrop(this, dropPos, type);							
+						}
+						
+					}
+				}
+			}
+
+			var serverRemovedDrops = state.dropsState;
+
+			for(var drops in serverRemovedDrops){
+				if(serverRemovedDrops.hasOwnProperty(drops)){
+					var drop = serverRemovedDrops[drops];
+
+//					console.log("drop: "+drop.x+", "+drop.y);
+					if(this.map.drops[drop.x][drop.y]){
+						this.map.RemoveDrop(null, {x: drop.x, y: drop.y});						
 					}
 				}
 			}
