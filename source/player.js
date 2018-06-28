@@ -38,6 +38,7 @@ class Player{
 		this.damage = 1;
 		this.speed = 5;			//how much time it takes to move from tile to tile
 		this.hitAnimationDuration = 0.2;
+		this.attackAnimationDuration = 0.2;
 		this.spawnTime = 3;
 		this.dead = true;
 
@@ -85,6 +86,7 @@ class Player{
 
 		this.immuneCounter = 0;
 		this.hitAnimationCounter = 0;		
+		this.attackAnimationCounter = 0;
 		this.spawnCounter = 0;
 
 		this.hurt = false;
@@ -100,6 +102,7 @@ class Player{
 		this.moving = false;	//if traveling to the destination tile
 		this.reached = true;
 		this.coolingDown = false;	//if drill animation on
+		this.attackCoolDown = false;
 
 		this.pos = pos;
 		
@@ -370,9 +373,9 @@ class Player{
 	ApplyInput(input, deltaTime){
 		var newDestination = false;
 
-		if(this.moving && !this.coolingDown){
+		if(this.moving && !this.coolingDown && !this.attackCoolDown){
 			if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){	//if we already reached 
-				this.reached = true;
+		//		this.reached = true;
 				this.moving = false;	//then don't move at all this frame and mark as not moving
 //				console.log("moving set to false");
 
@@ -396,10 +399,10 @@ class Player{
 				}
 			}
 			else{	//we not there
-				this.reached = false;
+		//		this.reached = false;
 			}
 		}
-		else if(!this.coolingDown){
+		else if(!this.coolingDown && !this.attackCoolDown){
 			if(input.key !== "n"){	//if we're not moving check for input that tells us to move
 				var destination = this.GetDestination(input.key, this.game.map, deltaTime);
 				if(destination.state != 'hit'){
@@ -499,6 +502,16 @@ class Player{
 				this.coolingDown = false;
 			}
 		}
+
+		if(this.attackCoolDown){
+			if(this.attackAnimationCounter < this.attackAnimationDuration){
+				this.attackAnimationCounter += deltaTime;
+			}
+			else{
+				this.attackAnimationCounter = 0;
+				this.attackCoolDown = false;
+			}
+		}
 	}
 
 
@@ -533,7 +546,7 @@ class Player{
 	}
 
 	HitTile(tilePos){
-		this.game.map.HitTile(tilePos.x, tilePos.y, this.damage);
+		this.game.map.HitTile(tilePos.x, tilePos.y, this.damage, this.id);
 
 		if(!this.server){
 			if(emitterTiles == null){
@@ -541,7 +554,7 @@ class Player{
 			}
 			setTimeout(
 				ParticleBurst.bind(this, 2, tilePos, 5), 100
-				);
+			);
 		}
 	}
 
@@ -636,6 +649,8 @@ class Player{
 
 			if(hit){
 				this.game.players[colliders[i]].ReceiveAttack(this.damage, this.id);
+				this.attackCoolDown = true;
+
 				if(!this.server){
 					game.camera.shake(0.005, 100);
 				}

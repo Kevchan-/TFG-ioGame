@@ -81,7 +81,6 @@ function CreateEmitter(which){
 }
 
 function ParticleBurst(which, pos, particles) {
-
     //  Position the emitter where the mouse/touch event was
     if(which == 1){
         emitter.x = Math.round(pos.x*tileSize+tileSize/2);

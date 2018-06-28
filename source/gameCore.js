@@ -140,6 +140,8 @@ class GameCore{
 			}
 		}
 
+		this.map.Update();
+
 		if(this.map.pendingChangedTiles.length){
 			state.tilesState = {};
 		}
@@ -151,13 +153,22 @@ class GameCore{
 				state.tilesState[tile.x+"x"+tile.y].x = tile.x;
 				state.tilesState[tile.x+"x"+tile.y].y = tile.y;
 				state.tilesState[tile.x+"x"+tile.y].hp = tile.hp;
-				var randomDrop = Math.floor(Math.random()*5);
+				state.tilesState[tile.x+"x"+tile.y].attacker = tile.attacker;
+				state.tilesState[tile.x+"x"+tile.y].drop = tile.randomDrop;
+				state.tilesState[tile.x+"x"+tile.y].justDied = tile.justDied;
 
-				state.tilesState[tile.x+"x"+tile.y].drop = randomDrop;
-				var tilePos = {};
-				tilePos.x = tile.x;
-				tilePos.y = tile.y;
-				this.map.AddDrop(this, tilePos, randomDrop);
+			}
+		}
+
+		var i = 0;
+		while(i < this.map.pendingChangedTiles.length){
+			if(this.map.pendingChangedTiles[i].hp > 0){
+				delete this.map.pendingChangedTiles[i];
+				this.map.pendingChangedTiles.splice(i, 1);
+			}			
+			else{
+				this.map.pendingChangedTiles[i].justDied = false;
+				i++;
 			}
 		}
 
@@ -174,9 +185,29 @@ class GameCore{
 			}
 		}
 
+		if(this.map.pendingAddedTiles.length){
+			state.newTiles = {};
+		}
+
+		for(var tiles in this.map.pendingAddedTiles){
+			if(this.map.pendingAddedTiles.hasOwnProperty(tiles)){
+				var tile = this.map.pendingAddedTiles[tiles];
+				state.newTiles[tile.x+"x"+tile.y] = {};
+				state.newTiles[tile.x+"x"+tile.y].x = tile.x;
+				state.newTiles[tile.x+"x"+tile.y].y = tile.y;
+				state.newTiles[tile.x+"x"+tile.y].type = tile.type;
+			}
+		}
+
 	    if(this.map.pendingChangedTiles.length>=3){
 			  this.map.pendingChangedTiles.splice(0, 1);
 	    }
+
+/*	    if(this.map.pendingAddedTiles.length>=30){
+			  this.map.pendingAddedTiles.splice(0, 1);
+	    }*/
+
+	    this.map.pendingAddedTiles = [];
 	    if(this.map.pendingDrops.length>=3){
 			  this.map.pendingDrops.splice(0, 1);
 	    }	    
@@ -329,8 +360,29 @@ class GameCore{
 						if(this.map.RemoveTile(rTile.x, rTile.y)){
 							this.map.AddDrop(this, dropPos, type);							
 						}
-						
 					}
+
+					if(rTile.attacker !== this.selfPlayer.id){
+						if(rTile.hp <= 0 && rTile.justDied){
+						if(emitterTiles == null){
+							CreateEmitter(2);
+						}
+						console.log("hp "+rTile.hp);
+						setTimeout(
+							ParticleBurst.bind(this, 2, {x: rTile.x, y: rTile.y}, 5), 100
+						);
+						}
+					}
+					
+				}
+			}
+
+			var serverAddedTiles = state.newTiles;
+
+			for(var tile in serverAddedTiles){
+				if(serverAddedTiles.hasOwnProperty(tile)){
+					var newTile = serverAddedTiles[tile];
+					this.map.PutTile(newTile.x, newTile.y, newTile.type);
 				}
 			}
 

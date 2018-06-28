@@ -1,20 +1,20 @@
 class Drop{
 	constructor(game, pos, type, server){
 		this.pos = pos;
-		this.type = 0;
+		this.type = 1;
 		this.game = game;
 		this.sprite = {};
 		this.server = server;
 
 		switch(this.type){
-			case 0://points
+			case 1://points
 			if(!this.server){
 				this.sprite = AddSprite("particle", pos);
 			}
 
 			this.points = 1;
 			break;
-			case 1:
+			case 0:
 
 			break;
 			case 2:

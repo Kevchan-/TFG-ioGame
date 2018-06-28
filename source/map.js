@@ -11,6 +11,7 @@ class Map{
 		this.height = 50;
 		this.tileMap = [];
 		this.drops = [];
+		this.dropRandom = 5;
 		for(var i = 0; i < this.width; i++){
 			this.drops[i] = {};
 			for(var j = 0; j < this.height; j++){
@@ -20,9 +21,13 @@ class Map{
 //		this.map = {};
 		this.isServer = false;
 		this.pendingChangedTiles = [];	//serverside only
+		this.pendingAddedTiles = [];	//serverside only
 		this.pendingDrops = [];	//serverside only
+		this.tilesToReset = []; //serverside again, but this one will be timers to reset removed tiles
+		this.tileResetTime = 1;
+		this.tileResetMin = 100;
 
-		this.standardTileHp = 1;
+		this.standardTileHp = 3;
 
 		if(typeof(isServer) == 'undefined'){
 			this.tileMap = tilemap;
@@ -78,6 +83,42 @@ class Map{
 		}
 	}
 
+	Update(deltaTime){
+		this.UpdateTiles();
+	}
+
+	UpdateTiles(){
+		if(this.tilesToReset.length > this.tileResetMin){
+			var i = 0;
+			while(i < this.tileResetMin){
+				this.ResetTile(this.tilesToReset[i]);
+				delete this.tilesToReset[i];
+				i++;
+			}
+			this.tilesToReset.splice(0, this.tileResetMin);
+		}
+	}
+
+	ResetTile(tile){
+		var newTile = {x: tile.x, y: tile.y, type: tile.type};
+		this.tileMap[tile.x][tile.y].type = tile.type;
+		this.tileMap[tile.x][tile.y].hp = tile.hp;
+		this.pendingAddedTiles.push(newTile);
+
+		var i = 0;
+		while(i < this.pendingChangedTiles.length){
+			if(this.pendingChangedTiles[i].x == newTile.x && this.pendingChangedTiles[i].y == newTile.y){
+				delete this.pendingChangedTiles[i];
+				this.pendingChangedTiles.splice(i, 1);
+			}
+			else{
+				i++;
+			}
+		}
+		
+
+	}
+
 	AddDrop(game, pos, type){
 		var tile = {};
 		tile.x = Math.trunc(pos.x);
@@ -115,6 +156,7 @@ class Map{
 		delete this.drops[tile.x][tile.y]; 
 		this.drops[tile.x][tile.y] = null;
 
+
 	}
 
 	ServerGenerateTile(x, y){
@@ -146,24 +188,44 @@ class Map{
 		return(free);
 	}
 
-	HitTile(x, y, damage, type){
+	HitTile(x, y, damage, id){
 		var tile = this.GetTile(x, y);
 		tile.hp -= damage;
 
-		if(this.isServer)
+		if(this.isServer){
 			if(tile.hp <= 0){
-				this.RemoveTile(x, y);
+				this.RemoveTile(x, y, id);
 			}
+			else{
+				var newtile = {x: x, y: y, attacker: id};
+				newtile.hp = tile.hp;
+				newtile.randomDrop = 0;
+				this.pendingChangedTiles.push(newtile);
+			}
+		}
 	}
 
-	RemoveTile(x, y){
+	PutTile(x, y, type){		//clientside
+		if(this.tileMap[x][y].type == 2 || this.tileMap[x][y].type == 3){
+			console.log(type);
+			this.tileMap[x][y].type = type;
+			this.map.putTile(type, x, y, this.rocksLayer);
+		}
+	}
+
+	RemoveTile(x, y, id){
 		var deleted = false;
+		var tileType = this.tileMap[x][y].type;
 		if(this.isServer){
 			if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
 				deleted = true;
 				this.tileMap[x][y].type = 2;
-				var tile = {x: x, y: y};
+				var tile = {x: x, y: y, attacker: id};
 				tile.hp = 0;
+					var randomDrop = Math.floor(Math.random()*this.dropRandom);
+					this.AddDrop(this, {x: x, y: y}, randomDrop);
+					tile.randomDrop = randomDrop;
+				tile.justDied = true;
 				this.pendingChangedTiles.push(tile);
 	//			console.log("removed Tile "+tile.x+", "+tile.y);
 			}
@@ -177,6 +239,12 @@ class Map{
 //				this.map.removeTile(x, y, 1);
 			}
 		}
+
+
+
+		var tileToReset = {x: x, y: y, hp: this.tileMap[x][y].hp, type: tileType, running: false, reseted: false};
+		this.tilesToReset.push(tileToReset);
+
 
 		return(deleted);
 	}
