@@ -310,10 +310,24 @@ class GameCore{
 				this.selfPlayer.SetServerPosition(debugPos);
 			}
 
+			if(this.selfPlayer.healthPoints < state[this.selfPlayer.id].healthPoints){
+			  if(emitter == null){
+				  CreateEmitter(1);
+		  	  }
+
+			  setTimeout(
+				  ParticleBurst.bind(this, 1, this.selfPlayer.pos, 10), 100
+			  );
+
+			  game.camera.shake(0.005, 100);
+
+			}
 			this.selfPlayer.healthPoints = state[this.selfPlayer.id].healthPoints;
+
 			if(this.selfPlayer.healthPoints <= 0 && !this.selfPlayer.dead){
 				this.selfPlayer.KillPlayer(state[this.selfPlayer.id].lastPersonWhoHit);
-			}			
+
+			}
 
 			for(var playerid in this.players){
 				if(this.players.hasOwnProperty(playerid) && typeof(state[playerid]) != "undefined"){
@@ -363,7 +377,7 @@ class GameCore{
 					}
 
 					if(rTile.attacker !== this.selfPlayer.id){
-						if(rTile.hp <= 0 && rTile.justDied){
+						if(rTile.hp <= 0 && rTile.justDied || rTile.hp > 0){
 						if(emitterTiles == null){
 							CreateEmitter(2);
 						}

@@ -37,8 +37,8 @@ class Player{
 		this.immuneTime = 0.2;
 		this.damage = 1;
 		this.speed = 5;			//how much time it takes to move from tile to tile
-		this.hitAnimationDuration = 0.2;
-		this.attackAnimationDuration = 0.2;
+		this.hitAnimationDuration = 0.2;		//for hitting tiles
+		this.attackAnimationDuration = 0.2;		//for attacking players
 		this.spawnTime = 3;
 		this.dead = true;
 
