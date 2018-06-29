@@ -4,6 +4,7 @@ var logo;
 var objects = [];
 var emitter = null;
 var emitterTiles = null;
+var emitterExplosions = null;
 
 var spritesheet;
 var spriteBatch;
@@ -26,6 +27,7 @@ function Preload () {
     game.load.image('red', "red.png");
     game.load.image('blue', "blue.png");
     game.load.image('particle', "assets/particle.png");
+    game.load.image('bomb', "assets/bomb.png");
     game.load.image('sea', "assets/3.png");
     game.load.spritesheet('spritesheet', 'assets/spritesheet.png', 16, 16, 4);
 
@@ -78,6 +80,15 @@ function CreateEmitter(which){
         emitterTiles.maxParticleScale = 1;
         emitterTiles.setRotation(0, 0);
     }
+    else if(which == 3){
+        emitterExplosions = game.add.emitter(0, 0, 1000);
+        emitterExplosions.makeParticles('particle');
+        emitterExplosions.minParticleSpeed.setTo(-50, -50);
+        emitterExplosions.maxParticleSpeed.setTo(50, 50);
+        emitterExplosions.minParticleScale = 1;
+        emitterExplosions.maxParticleScale = 2;
+        emitterExplosions.setRotation(0, 0);
+    }
 }
 
 function ParticleBurst(which, pos, particles) {
@@ -102,6 +113,16 @@ function ParticleBurst(which, pos, particles) {
         //  The final parameter (10) is how many particles will be emitted in this single burst
         emitterTiles.start(true, 80, null, particles);        
     }
+    else if(which == 3){
+        emitterExplosions.x = Math.round(pos.x*tileSize+tileSize/2);
+        emitterExplosions.y = Math.round(pos.y*tileSize+tileSize/2);
+
+        //  The first parameter sets the effect to "explode" which means all particles are emitted at once
+        //  The second gives each particle a 2000ms lifespan
+        //  The third is ignored when using burst/explode mode
+        //  The final parameter (10) is how many particles will be emitted in this single burst
+        emitterExplosions.start(true, 200, null, particles);        
+    }    
 }
 
 function DestroyEmitters(){

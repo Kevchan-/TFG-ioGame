@@ -3,15 +3,18 @@ if(typeof(global)!== 'undefined'){
 	var noiseGen = require('proc-noise');
 	var Perlin = new noiseGen();
 	var DropClass = require('./drop.js');
+	var ThreatClass = require('./threat.js');
 }
 
 class Map{
-	constructor(tilemap, isServer){
+	constructor(room, tilemap, isServer){
 		this.width = 50;
 		this.height = 50;
 		this.tileMap = [];
 		this.drops = [];
+		this.threats = [];
 		this.dropRandom = 5;
+		this.game = room;
 		for(var i = 0; i < this.width; i++){
 			this.drops[i] = {};
 			for(var j = 0; j < this.height; j++){
@@ -27,7 +30,7 @@ class Map{
 		this.tileResetTime = 1;
 		this.tileResetMin = 100;
 
-		this.standardTileHp = 3;
+		this.standardTileHp = 1;
 
 		if(typeof(isServer) == 'undefined'){
 			this.tileMap = tilemap;
@@ -84,7 +87,21 @@ class Map{
 	}
 
 	Update(deltaTime){
-		this.UpdateTiles();
+		if(this.isServer){
+			this.UpdateTiles();
+		}
+
+		var i = 0;
+
+		while(i < this.threats.length){
+			if(this.threats[i].ended){
+				this.RemoveThreat(this.threats[i]);
+			}
+			else{
+				this.threats[i].Update(deltaTime);
+				i++
+			}
+		}
 	}
 
 	UpdateTiles(){
@@ -120,18 +137,47 @@ class Map{
 	}
 
 	AddDrop(game, pos, type){
+
+		if(type == 5){
+			this.AddThreat(game, pos, type);
+		}
+		else{
+			var tile = {};
+			tile.x = Math.trunc(pos.x);
+			tile.y = Math.trunc(pos.y);
+			var newDrop = {};
+
+			if(!this.isServer){
+				newDrop = new Drop(game, pos, type, this.isServer);
+			}
+			else{
+				newDrop = new DropClass(game, pos, type, this.isServer);
+			}
+			this.drops[tile.x][tile.y] = newDrop;	
+		}
+	}
+
+	AddThreat(game, pos, type){
+		console.log("new threat");
 		var tile = {};
 		tile.x = Math.trunc(pos.x);
 		tile.y = Math.trunc(pos.y);
-		var newDrop = {};
+		var newThreat = {};
 
 		if(!this.isServer){
-			newDrop = new Drop(game, pos, type, this.isServer);
+			newThreat = new Threat(game, tile, type, this.isServer);
 		}
 		else{
-			newDrop = new DropClass(game, pos, type, this.isServer);
+			newThreat = new ThreatClass(game, tile, type, this.isServer);
 		}
-		this.drops[tile.x][tile.y] = newDrop;
+
+		newThreat.index = this.threats.length;
+		this.threats.push(newThreat);
+	}
+
+	RemoveThreat(threat){
+		delete this.threats[threat.index];
+		this.threats.splice(threat.index, 1);
 	}
 
 	RemoveDrop(drop, pos){
@@ -222,9 +268,9 @@ class Map{
 				this.tileMap[x][y].type = 2;
 				var tile = {x: x, y: y, attacker: id};
 				tile.hp = 0;
-					var randomDrop = Math.floor(Math.random()*this.dropRandom);
-					this.AddDrop(this, {x: x, y: y}, randomDrop);
-					tile.randomDrop = randomDrop;
+				var randomDrop = this.GenerateDrop();
+				this.AddDrop(this.game, {x: x, y: y}, randomDrop);
+				tile.randomDrop = randomDrop;
 				tile.justDied = true;
 				this.pendingChangedTiles.push(tile);
 	//			console.log("removed Tile "+tile.x+", "+tile.y);
@@ -240,13 +286,15 @@ class Map{
 			}
 		}
 
-
-
 		var tileToReset = {x: x, y: y, hp: this.tileMap[x][y].hp, type: tileType, running: false, reseted: false};
 		this.tilesToReset.push(tileToReset);
 
-
 		return(deleted);
+	}
+
+	GenerateDrop(){
+		var randomDrop = Math.round(Math.random()*this.dropRandom);
+		return(randomDrop);
 	}
 
 	ServerLoadJSON(mapName){

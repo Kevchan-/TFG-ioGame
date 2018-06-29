@@ -41,6 +41,7 @@ class Player{
 		this.attackAnimationDuration = 0.2;		//for attacking players
 		this.spawnTime = 3;
 		this.dead = true;
+		this.wasMurdered = false;
 
 
 		this.pos = {
@@ -585,7 +586,10 @@ class Player{
 			this.sprite.visible = false;
 			if(this.isSelf){
 				console.log("following "+killerId);
-				SetCameraTarget(this.game.players[killerId].sprite);
+				if(typeof(killerId) != undefined && killerId != null){
+					this.wasMurdered = true;
+					SetCameraTarget(this.game.players[killerId].sprite);
+				}
 			}
 		}
 	}
@@ -796,7 +800,7 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 			this.sprite = AddSprite('red', cords);
 			this.sprite.visible = true;
-			this.serverSprite.visible = true;
+			this.serverSprite.visible = false;
 			SetCameraTarget(this.sprite);			
 		}
 		else{

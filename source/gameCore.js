@@ -55,7 +55,7 @@ class GameCore{
 		}
 
 		if(this.server){
-			this.map = new GameMap("map100x100", true);
+			this.map = new GameMap(this, "map100x100", true);
 		}
 		else{
 			this.ClientConnectToServer();
@@ -140,7 +140,7 @@ class GameCore{
 			}
 		}
 
-		this.map.Update();
+		this.map.Update(this.localDeltaTime);
 
 		if(this.map.pendingChangedTiles.length){
 			state.tilesState = {};
@@ -238,6 +238,7 @@ class GameCore{
 		//process server messages
 		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime);
 		this.selfPlayer.Update(this.localDeltaTime);
+		this.map.Update(this.localDeltaTime);
 		this.ClientProcessNetUpdates();
 
 	}
@@ -310,7 +311,7 @@ class GameCore{
 				this.selfPlayer.SetServerPosition(debugPos);
 			}
 
-			if(this.selfPlayer.healthPoints < state[this.selfPlayer.id].healthPoints){
+			if(this.selfPlayer.healthPoints > state[this.selfPlayer.id].healthPoints){
 			  if(emitter == null){
 				  CreateEmitter(1);
 		  	  }
@@ -334,6 +335,17 @@ class GameCore{
 					if(typeof(state[playerid]) == "undefined"){
 						console.log(state);
 					}
+
+					if(this.players[playerid].healthPoints > state[playerid].healthPoints && state[playerid].lastPersonWhoHit != this.selfPlayer.id){
+					  if(emitter == null){
+						  CreateEmitter(1);
+				  	  }
+
+			  			setTimeout(
+					  		ParticleBurst.bind(this, 1, this.players[playerid].pos, 10), 100
+				  		);						
+					}
+
 					var hp = state[playerid].healthPoints;
 					this.players[playerid].healthPoints = hp;
 	//				console.log("Health: "+this.players[playerid].healthPoints);
@@ -369,10 +381,13 @@ class GameCore{
 				if(serverChangedTiles.hasOwnProperty(tile)){
 					var rTile = serverChangedTiles[tile];
 					if(rTile.hp <= 0){
-						var type = rTile.randomDrop;
+						var type = rTile.drop;
 						var dropPos = {x: rTile.x, y: rTile.y};
-						if(this.map.RemoveTile(rTile.x, rTile.y)){
-							this.map.AddDrop(this, dropPos, type);							
+						if(rTile.justDied){
+							if(this.map.RemoveTile(rTile.x, rTile.y)){
+								console.log("server type: "+type);
+								this.map.AddDrop(this, dropPos, type);							
+							}
 						}
 					}
 
@@ -469,7 +484,7 @@ class GameCore{
 		this.active = true;
 		var tilemap = parsedData.tileMap;
 //		console.log(tilemap);
-		this.map = new Map(tilemap);
+		this.map = new Map(this, tilemap);
 		this.selfPlayer.pos = parsedData[this.selfPlayer.id];
 
 //		console.log(this.destination.x+", "+this.destination.y);
