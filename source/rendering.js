@@ -91,7 +91,7 @@ function CreateEmitter(which){
     }
 }
 
-function ParticleBurst(which, pos, particles) {
+function ParticleBurst(which, pos, particles, time){
     //  Position the emitter where the mouse/touch event was
     if(which == 1){
         emitter.x = Math.round(pos.x*tileSize+tileSize/2);
@@ -121,8 +121,16 @@ function ParticleBurst(which, pos, particles) {
         //  The second gives each particle a 2000ms lifespan
         //  The third is ignored when using burst/explode mode
         //  The final parameter (10) is how many particles will be emitted in this single burst
-        emitterExplosions.start(true, 200, null, particles);        
+        emitterExplosions.start(true, time*1000, null, particles);        
     }    
+}
+
+function ParticlesBurst(which, posVec, particles, time){
+    var positions = posVec;
+
+    for(var i = 0; i < positions.length; i++){
+        ParticleBurst(which, positions[i], particles, time);
+    }
 }
 
 function DestroyEmitters(){
@@ -145,6 +153,10 @@ function GetSpritePosition(sprite){
     pos.y = sprite.y;
     return(pos);
 }
+function ColorImage(game, source, color) {   
+    var color = Phaser.Color.hexToColor(color);
+    return game.make.image(0, 0, game.add.bitmapData(source.width, source.height).fill(color.r, color.g, color.b).blendDestinationAtop().draw(source, 0, 0, source.width, source.height));
+}
 
 function AddSprite(name, cords, index){
     if(typeof(index) == 'undefined')
@@ -161,6 +173,41 @@ function AddSprite(name, cords, index){
     sprite.index = objects.length;
     objects.push(sprite);
     return(sprite);
+}
+
+function Flickering(sprite, tone, duration, interval, on){
+    if(sprite){
+        var interval = interval;    
+        var duration = duration -  interval;
+
+       // console.log("deltatime: "+interval+", duration: "+duration);
+        var on = on;
+
+        if(on){
+    //        sprite.tint = 0xFFFFFF;
+            sprite.visible = false;
+            on = false;
+        }else{
+            sprite.visible = true;
+       //     sprite.tint = tone;
+            on = true;
+        }
+
+    //   console.log(sprite.tint);
+        if(duration <= 1){
+            if(interval >= 0.5)
+            interval = interval/2;
+        }
+
+        console.log(interval); 
+        if(duration <= 0){
+//            sprite.tint = 0xFFFFFF;
+            sprite.visible = false;
+        }
+        else{
+            setTimeout(Flickering.bind(this, sprite, tone, duration, interval, on), interval*1000);
+        } 
+    } 
 }
 
 function SetCameraTarget(sprite){

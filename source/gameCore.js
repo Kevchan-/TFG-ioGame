@@ -385,8 +385,8 @@ class GameCore{
 						var dropPos = {x: rTile.x, y: rTile.y};
 						if(rTile.justDied){
 							if(this.map.RemoveTile(rTile.x, rTile.y)){
-								console.log("server type: "+type);
-								this.map.AddDrop(this, dropPos, type);							
+//								console.log("server type: "+type);
+								this.map.AddDrop(this, dropPos, 5);							
 							}
 						}
 					}

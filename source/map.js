@@ -95,7 +95,8 @@ class Map{
 
 		while(i < this.threats.length){
 			if(this.threats[i].ended){
-				this.RemoveThreat(this.threats[i]);
+//				console.log("threats "+this.threats.length);
+				this.RemoveThreat(this.threats[i], i);
 			}
 			else{
 				this.threats[i].Update(deltaTime);
@@ -171,13 +172,15 @@ class Map{
 			newThreat = new ThreatClass(game, tile, type, this.isServer);
 		}
 
-		newThreat.index = this.threats.length;
 		this.threats.push(newThreat);
+		newThreat.index = this.threats.length-1;
+		console.log("new index: "+newThreat.index);
 	}
 
-	RemoveThreat(threat){
-		delete this.threats[threat.index];
-		this.threats.splice(threat.index, 1);
+	RemoveThreat(threat, index){
+		console.log("index: "+index);
+		delete this.threats[index];
+		this.threats.splice(index, 1);
 	}
 
 	RemoveDrop(drop, pos){
@@ -269,7 +272,7 @@ class Map{
 				var tile = {x: x, y: y, attacker: id};
 				tile.hp = 0;
 				var randomDrop = this.GenerateDrop();
-				this.AddDrop(this.game, {x: x, y: y}, randomDrop);
+				this.AddDrop(this.game, {x: x, y: y}, 5);	//to change
 				tile.randomDrop = randomDrop;
 				tile.justDied = true;
 				this.pendingChangedTiles.push(tile);

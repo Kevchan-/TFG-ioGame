@@ -8,10 +8,11 @@ class Threat{
 		switch(type){
 			case 5:
 			console.log("bomb");
+			this.timer = 3;
 			if(!server){
 				this.sprite = AddSprite("bomb", pos);
+				Flickering(this.sprite, 0x00ff00, this.timer+0.3, 0.5);
 			}
-			this.timer = 2;
 			this.exploded = false;
 			this.damage = 5;
 
@@ -35,7 +36,7 @@ class Threat{
 		switch(this.type){
 			case 5:
 			if(!this.exploded){
-				console.log("updating "+ this.timer);
+//				console.log("updating "+ this.timer);
 				if(this.timer <= 0){
 					this.exploded = true;
 					this.Explode();
@@ -85,12 +86,7 @@ class Threat{
 
 					if(Math.abs(distanceToCenter) <= radius){
 						if(!this.server){
-						    if(emitterExplosions == null){
-							    CreateEmitter(3);
-					  	    }							
-							setTimeout(
-								ParticleBurst.bind(this, 3, {x: tile.x, y: tile.y}, 4), 100
-							);							
+							tilesAffected.push({x: tile.x, y: tile.y});
 						}
 						else{
 							tilesAffected.push(tile);
@@ -99,8 +95,16 @@ class Threat{
 				}
 			}
 		}
+	    
 		if(this.server){
-			this.CheckForPlayersAffected(tilesAffected, 6, 0.5);
+			this.CheckForPlayersAffected(tilesAffected, 2, 0.5);
+		}
+		else{
+		    if(emitterExplosions == null){
+			    CreateEmitter(3);
+	  	    }					
+				ParticlesBurst(3, tilesAffected, 4, 0.5);
+			this.ended = true;
 		}
 	}
 
@@ -108,19 +112,20 @@ class Threat{
 		var players = this.game.players;
 		var times = times - 1;
 
-		for(var i = 0; i < tiles.length; i++){
-			var posX = tiles[i].x;
-			var posY = tiles[i].y;
-
-			for(var player in players){
-				if(players.hasOwnProperty(player)){
-					if(!players[player].dead)
-					if(Math.floor(players[player].pos.x) == posX && Math.floor(players[player].pos.y)){
-						players[player].healthPoints -= this.damage;
+		for(var player in players){
+			if(players.hasOwnProperty(player)){
+				if(!players[player].dead){
+					for(var i = 0; i < tiles.length; i++){
+						var posX = tiles[i].x;
+						var posY = tiles[i].y;
+						
+						if(Math.floor(players[player].pos.x) == posX && Math.floor(players[player].pos.y) == posY){
+							players[player].healthPoints -= this.damage;
+							break;
+						}
 					}
 				}
 			}
-
 		}
 
 		if(times == 0){
@@ -131,6 +136,8 @@ class Threat{
 		}
 	}
 }
+
+	
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser
 	module.exports = Threat;	
