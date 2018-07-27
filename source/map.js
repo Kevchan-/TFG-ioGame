@@ -345,9 +345,12 @@ class Map{
 		var tile = this.GetTile(x, y);
 //		console.log("type "+tile.type);
 
-		if(tile.type != 2 && tile.type != 3){
+		if((tile.type != 2 && tile.type != 3)){
 			free = false;
 	//		console.log("tile not free");
+		}
+		if(tile.hp <= 0){
+			free = true;
 		}
 
 		return(free);
