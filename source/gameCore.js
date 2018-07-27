@@ -453,7 +453,7 @@ class GameCore{
 				if(serverAddedTiles.hasOwnProperty(tile)){
 					var newTile = serverAddedTiles[tile];
 //					console.log("put tile");
-				//	this.map.PutTile(newTile.x, newTile.y, newTile.type);
+					this.map.PutTile(newTile.x, newTile.y, newTile.type);
 				}
 			}
 

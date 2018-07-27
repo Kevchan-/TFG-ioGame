@@ -358,28 +358,35 @@ class Map{
 		tile.hp -= damage;
 		var hp = tile.hp;
 
-		if(this.isServer){
 			if(tile.hp <= 0){
-				this.RemoveTile(x, y, id);
+				if(this.isServer){
+					this.RemoveTile(x, y, id);
+				}
+				else{
+					this.RemoveTile(x, y, id, true);
+				}
 			}
-			else{
+			else if(this.server){
 				var newtile = {x: x, y: y, attacker: id};
 				newtile.hp = tile.hp;
 				newtile.randomDrop = 0;
 				this.pendingChangedTiles.push(newtile);
 			}
-		}
+		
 		return(hp);
 	}
 
 	PutTile(x, y, type, hp, temp){		//clientside
+		var put = false;
 		if(this.tileMap[x][y].type == 2 || this.tileMap[x][y].type == 3){
 			console.log(type);
 			this.tileMap[x][y].type = type;
 			this.tileMap[x][y].hp = hp;
 			this.tileMap[x][y].temp = temp;			
 			this.map.putTile(type, x, y, this.rocksLayer);
+			put = true;
 		}
+		return(put);
 	}
 
 	RemoveTile(x, y, id, ghostRemove){
@@ -418,8 +425,10 @@ class Map{
 		}
 		else{
 			if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
-				deleted = true;
-				this.tileMap[x][y].type = 2;
+				if(!ghostRemove){
+					deleted = true;
+					this.tileMap[x][y].type = 2;					
+				}
 				this.map.putTile(2, x, y, this.rocksLayer);
 //				DeleteSprite(this.tileMap[x][y].sprite);
 //				this.map.removeTile(x, y, 1);
