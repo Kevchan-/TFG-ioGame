@@ -4,12 +4,155 @@
     <title>TFG Game</title>
     <style>
 		* { margin: auto; padding: 0; }
-		body { font: 13px Helvetica, Arial; }
+		body { 
+      font: 28px Helvetica, Arial; 
+      margin: 0;
+      padding: 0;
+      height: 100%;
+
+-webkit-user-select: none; /* Safari */        
+-moz-user-select: none; /* Firefox */
+-ms-user-select: none; /* IE10+/Edge */
+user-select: none; /* Standard */      
+    }
+    .Button{
+      border-radius: 50%;
+      margin:0;
+      padding:0;
+      background-color: gray;
+      position: absolute;
+      z-index:1000;
+      border: 1px solid #000;
+    }
+
+    .Button:hover{
+      background-color: red;
+    }
+
+    .Button:active{
+      background-color: white;
+    }
+
+    .PanelButton{
+      border-radius: 20px;
+      margin: 0;
+      padding: 0;
+      border: 1px solid #000;
+      width: 180px;
+      height: 50px;
+      background-color: inherit;
+      position: relative;
+      left: 50%;
+      transform: translateX(-50%) translateY(-50%);
+    }
+
+    .PanelButton:hover{
+      background-color: firebrick;
+    }
+
+    .PanelButton:active{
+      background-color: white;
+    }
+
+    #playButton{
+      white-space: nowrap;
+      top: 49%;
+    }
+
+    #powerButton{
+      display: none;
+      min-height: 50px;
+      min-width: 50px;
+      bottom: 60px;
+      right: 10px;
+    }
+
+    #tileButton{
+      min-height: 50px;
+      min-width: 50px;
+      bottom: 10px;
+      right: 60px;
+    }
+
+    #panelContainer{  
+      display: block;
+      margin-right: auto;
+      background-color: rgba(0, 0, 0, 0.3);
+      pointer-events: none;
+      position: absolute;
+      z-index: 1001;
+      width: 100%;
+      height: 100%;
+    }
+
+    .Panel{  
+      border-radius: 25px;
+      position: static;
+      background-color: rgba(255, 255, 255, 0.7);
+      pointer-events: auto;
+      z-index:1001;
+    }
+
+    .Panel:hover{
+      background-color: rgba(255, 255, 255, 0.9);
+    }
+
+    #infoPanel{
+      position: relative;
+      margin-top: 1%;
+      z-index:1001;
+      width: 70%;
+      height: 45%;
+      white-space: nowrap;  
+    }
+
+    #menuPanel{
+      display: inline-block;
+      vertical-align:top;
+      margin: auto;
+      margin-top: 1%;
+      margin-left: 30%;
+      height: 30%;
+      width: 40%;
+    }
+    #menuPanel2{
+      display:inline-block;
+      margin: 0;      
+      margin-top: 1%;
+      vertical-align:top;
+      margin-top: 1%;
+      height: 30%;
+      width: 40%;
+    }
+    .ButtonText{
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    -moz-transform: translateX(-50%) translateY(-50%);
+    -webkit-transform: translateX(-50%) translateY(-50%);
+    transform: translateX(-50%) translateY(-50%);
+    }
+
+    #mainText{
+      font: 80px Helvetica, Arial; 
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      -moz-transform: translateX(-50%) translateY(-50%);
+      -webkit-transform: translateX(-50%) translateY(-50%);
+      transform: translateX(-50%) translateY(-50%);
+    }
+    canvas{
+      margin: auto;
+      padding: 0;
+    }
+
     </style>
   </head>
 
   <body>
   	<!-- Libraries -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
   	<script src="/socket.io/socket.io.js"></script>
   	<script src="//cdn.jsdelivr.net/phaser/2.6.0/phaser.min.js"></script>
     <script src="sscd.1.5.min.js"></script>
@@ -19,10 +162,22 @@
     <script src="player.js"></script>
     <script src="gameNet.js"></script>
     <script src="drop.js"></script>
+    <script src="powerUp.js"></script>
     <script src="threat.js"></script>
     <script src="map.js"></script>
     <script src="gameCore.js"></script>
   	<script src="client.js"></script>
+
+    <div id= "powerButton" class="Button" ></div>
+    <div id= "tileButton" class="Button" ></div>
+    <div id= "panelContainer">
+      <div id= "infoPanel" class="Panel">
+        <span id="mainText">GAME.IO</span>
+      </div>
+        <div id= "menuPanel" class="Panel">
+          <div id= "playButton" class= "PanelButton"><span id="playButtonText" class="ButtonText">Play!</span></div>
+        </div>
+    </div>
   </body>
 </html>
     

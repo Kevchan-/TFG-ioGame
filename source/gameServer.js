@@ -4,8 +4,8 @@ var verbose = true;
 
 
 class GameServer{	//receive and handle messages from the client
-	constructor(gameInstance){
-		this.game = gameInstance;
+	constructor(room){
+		this.room = room;
 		console.log("Game Server Created");
 	}
 
@@ -20,8 +20,8 @@ class GameServer{	//receive and handle messages from the client
 //				console.log("Messageparts: " +messageParts[1]);
 				this.OnInputReceived(socket, data);
 				break;
-			case 'p':
-				console.log("P received");
+			case 'b':
+				this.OnButtonPushed(socket, data);
 				break;
 			default:
 				break;
@@ -34,8 +34,22 @@ class GameServer{	//receive and handle messages from the client
 		if(this.ValidateInput(data)){
 			game.ServerHandleInput(client, data);
 		}
-		var input = JSON.parse(data);
 //		console.log(data);
+	}
+
+	OnButtonPushed(client, data){
+		var messageParts = data.split('.');
+		var type = messageParts[0];
+		if(type=="s"){
+			this.room.GameStartRequest(client);
+		}
+		else if(type=="r"){
+			client.room.game.ServerRevivePlayer(client.userid);
+		}
+		else{
+			var game = client.room.game;
+			game.ServerHandleButtonInput(client, data);
+		}
 	}
 
 

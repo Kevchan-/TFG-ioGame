@@ -18,7 +18,7 @@ class GameRoom{
 		this.game = new gameCore(this);
 		this.gameServer = new gameServer(this);
 
-		this.AddPlayer(client);
+//		this.AddPlayer(client);
 		this.playerHost.send('h.'+this.playerHost.userid);
 	}
 
@@ -39,7 +39,17 @@ class GameRoom{
 			console.log("game starts");
 			this.StartGame();
 		}
+	}
 
+	GameStartRequest(client){
+		if(!this.game.players[client.userid]){
+			this.AddPlayer(client);
+		}
+	}
+
+	ReviveRequest(client){
+		if(this.game.players[client.userid].dead){
+		}
 	}
 	
 	OnPlayerJoin(client){	//send the ids of existing and new players to those
@@ -117,13 +127,14 @@ class GameRoom{
 	}
 
 	StartGame(newPlayer){
-		var playersState = {};
-		playersState.tileMap = this.game.map.tileMap;
-
-		if(!newPlayer){	//if no new player is specified then its the first players needed for the game to start
+		var playersState = {};	
+		if(!this.active){
 			this.active = true;
 			this.game.ServerStartGame();
+		}
 
+		if(!newPlayer){	//if no new player is specified then its the first players needed for the game to start
+		
 			for(var playerId in this.playerClients){
 				if(this.playerClients.hasOwnProperty(playerId)){
 					//get every player's starting position
@@ -136,6 +147,9 @@ class GameRoom{
 					this.game.players[playerId].lastTile.y = cords.y
 					this.game.players[playerId].SetUpParameters(cords, playerId);
 					playersState[playerId] = this.game.players[playerId].pos;
+
+					this.game.map.RemoveTile(cords.x, cords.y, null, true);
+					playersState.tileMap = this.game.map.tileMap;
 				}
 			}
 
@@ -167,6 +181,10 @@ class GameRoom{
 			this.game.players[newPlayer.userid].lastTile.y = cords.y;
 			this.game.players[newPlayer.userid].SetUpParameters(cords, playerId);
 			playersState[newPlayer.userid] = this.game.players[newPlayer.userid].pos;
+			
+			this.game.map.RemoveTile(cords.x, cords.y, null, true);
+			playersState.tileMap = this.game.map.tileMap;
+
 			playersState = JSON.stringify(playersState);
 			newPlayer.send('s.'+playersState);
 		}
@@ -199,7 +217,8 @@ var RoomServer = module.exports = {roomCount : 0, rooms : {}};
 					if(this.rooms[roomid]){
 						if(this.rooms[roomid].playerCount < this.rooms[roomid].playerLimit){	//if this room isnt full
 							this.log("Entering room "+this.rooms[roomid].roomid+"");
-							this.rooms[roomid].AddPlayer(client);
+							client.room = this.rooms[roomid];
+							//this.rooms[roomid].AddPlayer(client);
 							logged = true;
 						}
 					}

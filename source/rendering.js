@@ -13,6 +13,9 @@ var upKey;
 var downKey;
 var leftKey;
 var rightKey;
+var spaceKey;
+var backKey;
+var controlKey;
 
 var touchCords;
 
@@ -28,6 +31,7 @@ function Preload () {
     game.load.image('blue', "blue.png");
     game.load.image('particle', "assets/particle.png");
     game.load.image('bomb', "assets/bomb.png");
+    game.load.image('powerUp', "assets/powerUp.png");
     game.load.image('sea', "assets/3.png");
     game.load.spritesheet('spritesheet', 'assets/spritesheet.png', 16, 16, 4);
 
@@ -47,6 +51,10 @@ function Create () {
     downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
     leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
     rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+    spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACE);
+    backKey = game.input.keyboard.addKey(Phaser.Keyboard.BACKSPACE);
+    controlKey = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
+    shiftKey = game.input.keyboard.addKey(Phaser.Keyboard.SHIFT);
     
     game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
   //  game.scale.scaleMode = Phaser.ScaleManager.USER_SCALE;
@@ -196,10 +204,9 @@ function Flickering(sprite, tone, duration, interval, on){
     //   console.log(sprite.tint);
         if(duration <= 1){
             if(interval >= 0.5)
-            interval = interval/2;
+                interval = interval/2;
         }
 
-        console.log(interval); 
         if(duration <= 0){
 //            sprite.tint = 0xFFFFFF;
             sprite.visible = false;

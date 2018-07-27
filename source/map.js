@@ -4,6 +4,7 @@ if(typeof(global)!== 'undefined'){
 	var Perlin = new noiseGen();
 	var DropClass = require('./drop.js');
 	var ThreatClass = require('./threat.js');
+	var PowerUpClass = require('./powerUp.js');
 }
 
 class Map{
@@ -13,7 +14,8 @@ class Map{
 		this.tileMap = [];
 		this.drops = [];
 		this.threats = [];
-		this.dropRandom = 5;
+		this.powerUps = [];
+		this.dropRandom = 100;
 		this.game = room;
 		for(var i = 0; i < this.width; i++){
 			this.drops[i] = {};
@@ -26,18 +28,20 @@ class Map{
 		this.pendingChangedTiles = [];	//serverside only
 		this.pendingAddedTiles = [];	//serverside only
 		this.pendingDrops = [];	//serverside only
+		this.pendingTakenPowerUps = [];	//serverside only
 		this.tilesToReset = []; //serverside again, but this one will be timers to reset removed tiles
 		this.tileResetTime = 1;
-		this.tileResetMin = 100;
+		this.tileResetMin = 1000;
 
 		this.standardTileHp = 1;
+		this.strongTileHp = 3;
 
 		if(typeof(isServer) == 'undefined'){
 			this.tileMap = tilemap;
 
 			this.tileMap.height = this.tileMap.length;
 			this.tileMap.width = this.tileMap.length;
-//			game.world.setBounds(0, 0, this.tileMap.width*tileSize, this.tileMap.height*tileSize);
+//			game.world.setBounds(0, 0, this.tileMap.width*tileSize*2, this.tileMap.height*tileSize*2);
 
 			this.map = game.add.tilemap();
 			this.map.addTilesetImage('spritesheet', 'spritesheet', tileSize, tileSize, 0, 0);
@@ -89,9 +93,23 @@ class Map{
 	Update(deltaTime){
 		if(this.isServer){
 			this.UpdateTiles();
+			this.CheckPowerUpCollisions();
 		}
 
 		var i = 0;
+
+		while(i < this.powerUps.length){
+			if(this.powerUps[i].ended){
+//				console.log("threats "+this.threats.length);
+				this.RemovePowerUp(i);
+			}
+			else{
+				this.powerUps[i].Update(deltaTime);
+				i++
+			}
+		}		
+
+		i = 0;
 
 		while(i < this.threats.length){
 			if(this.threats[i].ended){
@@ -105,7 +123,45 @@ class Map{
 		}
 	}
 
+	CheckPowerUpCollisions(){
+		if(this.powerUps.length){
+			var players = this.game.players;
+			for(var playerid in players){
+				if(players.hasOwnProperty(playerid)){
+					var player = players[playerid];
+					if(!player.dead){
+						for(var i = 0; i < this.powerUps.length; i++){
+							if(!this.powerUps[i].taken){
+								var pUp = this.powerUps[i];
+								var posX = pUp.pos.x;
+								var posY = pUp.pos.y;
+								
+								if(Math.round(player.pos.x) == posX && Math.round(player.pos.y) == posY){
+									if(player.usingPowerUp){
+
+									}
+									else{
+										if(player.powerUp){
+											player.powerUp.End();								
+										}										
+										console.log("power up collision");
+										pUp.Take(player.id);
+										var taken = {x: pUp.pos.x, y: pUp.pos.y, id: pUp.id};
+										taken.justTaken = true;
+										taken.player = player.id;
+										this.pendingTakenPowerUps.push(taken);
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}		
+	}
+
 	UpdateTiles(){
+	
 		if(this.tilesToReset.length > this.tileResetMin){
 			var i = 0;
 			while(i < this.tileResetMin){
@@ -119,30 +175,64 @@ class Map{
 
 	ResetTile(tile){
 		var newTile = {x: tile.x, y: tile.y, type: tile.type};
-		this.tileMap[tile.x][tile.y].type = tile.type;
-		this.tileMap[tile.x][tile.y].hp = tile.hp;
-		this.pendingAddedTiles.push(newTile);
+		var isPlayerOnTile = false;
 
-		var i = 0;
-		while(i < this.pendingChangedTiles.length){
-			if(this.pendingChangedTiles[i].x == newTile.x && this.pendingChangedTiles[i].y == newTile.y){
-				delete this.pendingChangedTiles[i];
-				this.pendingChangedTiles.splice(i, 1);
-			}
-			else{
-				i++;
+		var players = this.game.players;
+		for(var i = 0; i < players.length; i++){
+			if(!players[i].dead){
+				var pos = players[i].pos;
+				var tilePos = {x: Math.abs(newTile.x), y: Math.abs(newTile.y)};
+				pos.x = Math.abs(pos.x);
+				pos.y = Math.abs(pos.y);
+				if(Math.round(pos.x) == tilePos.x && Math.round(pos.y) == tilePos.y){
+					isPlayerOnTile = true;
+					break;
+				}
 			}
 		}
-		
 
+
+		if(!isPlayerOnTile){
+			this.tileMap[tile.x][tile.y].type = tile.type;
+			this.tileMap[tile.x][tile.y].hp = tile.hp;
+			this.pendingAddedTiles.push(newTile);
+
+			var i = 0;
+			while(i < this.pendingChangedTiles.length){
+				if(this.pendingChangedTiles[i].x == newTile.x && this.pendingChangedTiles[i].y == newTile.y){
+					delete this.pendingChangedTiles[i];
+					this.pendingChangedTiles.splice(i, 1);
+					break;
+				}
+				else{
+					i++;
+				}
+			}
+		}
+		else{
+			console.log("couldnt make tile");		
+		}
 	}
 
 	AddDrop(game, pos, type){
 
-		if(type == 5){
+		var type = type;
+		if(type >= 8 && type <= 15){
+			if(type < 12){
+				type = 5;
+			}
+			else if(type < 14){
+				type = 6;
+			}
+			else if(type == 15){
+				type = 7;
+			}
 			this.AddThreat(game, pos, type);
 		}
-		else{
+		else if(type >= 16 && type <= 20){
+			this.AddPowerUp(game, pos, 8);
+		}
+		else if(type < this.dropRandom){
 			var tile = {};
 			tile.x = Math.trunc(pos.x);
 			tile.y = Math.trunc(pos.y);
@@ -174,13 +264,39 @@ class Map{
 
 		this.threats.push(newThreat);
 		newThreat.index = this.threats.length-1;
-		console.log("new index: "+newThreat.index);
+	}
+
+	AddPowerUp(game, pos, type){
+//		console.log("new power up");
+		var tile = {};
+		tile.x = Math.trunc(pos.x);
+		tile.y = Math.trunc(pos.y);
+		var newPUp = {};
+
+		if(!this.isServer){
+			newPUp = new PowerUp(game, tile, type, this.isServer);
+		}
+		else{
+			newPUp = new PowerUpClass(game, tile, type, this.isServer);
+		}
+
+		this.powerUps.push(newPUp);
+		newPUp.index = this.threats.length-1;
 	}
 
 	RemoveThreat(threat, index){
 		console.log("index: "+index);
 		delete this.threats[index];
 		this.threats.splice(index, 1);
+	}
+
+	ProcessTakenPowerUp(powerUp, player){
+
+	}
+
+	RemovePowerUp(index){
+		delete this.powerUps[index];
+		this.powerUps.splice(index, 1);		
 	}
 
 	RemoveDrop(drop, pos){
@@ -204,17 +320,17 @@ class Map{
 		}
 		delete this.drops[tile.x][tile.y]; 
 		this.drops[tile.x][tile.y] = null;
-
-
 	}
 
 	ServerGenerateTile(x, y){
 		var tile = {};
-		var value = Perlin.noise(x * this.noiseScale, y * this.noiseScale);
+		var value = Math.abs(Math.round((Perlin.noise(x * this.noiseScale, y * this.noiseScale)*5)-1));
 
 		tile.x = x;
 		tile.y = y;
-		tile.type = Math.round(value*4/*total types of tile*/);
+//		tile.type = Math.round(value*4/*total types of tile*/);
+		tile.type = value;
+		console.log(value);
 		tile.hp = this.standardTileHp;
 
 		return(tile);
@@ -240,6 +356,7 @@ class Map{
 	HitTile(x, y, damage, id){
 		var tile = this.GetTile(x, y);
 		tile.hp -= damage;
+		var hp = tile.hp;
 
 		if(this.isServer){
 			if(tile.hp <= 0){
@@ -252,31 +369,51 @@ class Map{
 				this.pendingChangedTiles.push(newtile);
 			}
 		}
+		return(hp);
 	}
 
-	PutTile(x, y, type){		//clientside
+	PutTile(x, y, type, hp, temp){		//clientside
 		if(this.tileMap[x][y].type == 2 || this.tileMap[x][y].type == 3){
 			console.log(type);
 			this.tileMap[x][y].type = type;
+			this.tileMap[x][y].hp = hp;
+			this.tileMap[x][y].temp = temp;			
 			this.map.putTile(type, x, y, this.rocksLayer);
 		}
 	}
 
-	RemoveTile(x, y, id){
+	RemoveTile(x, y, id, ghostRemove){
 		var deleted = false;
 		var tileType = this.tileMap[x][y].type;
 		if(this.isServer){
-			if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
-				deleted = true;
-				this.tileMap[x][y].type = 2;
-				var tile = {x: x, y: y, attacker: id};
-				tile.hp = 0;
-				var randomDrop = this.GenerateDrop();
-				this.AddDrop(this.game, {x: x, y: y}, 5);	//to change
-				tile.randomDrop = randomDrop;
-				tile.justDied = true;
-				this.pendingChangedTiles.push(tile);
-	//			console.log("removed Tile "+tile.x+", "+tile.y);
+			if(ghostRemove == true){	//remove tile with no other effects
+				if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
+					deleted = true;
+					this.tileMap[x][y].type = 2;
+					var tile = {x: x, y: y, attacker: id};
+					tile.hp = 0;
+					var randomDrop = 100;
+					tile.randomDrop = randomDrop;
+					tile.justDied = true;
+					this.pendingChangedTiles.push(tile);
+				}
+			}
+			else{
+				if(this.tileMap[x][y].type != 2 && this.tileMap[x][y].type != 3){
+					deleted = true;
+					this.tileMap[x][y].type = 2;
+					var tile = {x: x, y: y, attacker: id};
+					tile.hp = 0;
+					var randomDrop = 0;
+					if(id){
+						randomDrop = this.GenerateDrop();
+					}
+					this.AddDrop(this.game, {x: x, y: y}, randomDrop);
+					tile.randomDrop = randomDrop;
+					tile.justDied = true;
+					this.pendingChangedTiles.push(tile);
+		//			console.log("removed Tile "+tile.x+", "+tile.y);
+				}
 			}
 		}
 		else{
@@ -289,8 +426,8 @@ class Map{
 			}
 		}
 
-		var tileToReset = {x: x, y: y, hp: this.tileMap[x][y].hp, type: tileType, running: false, reseted: false};
-		this.tilesToReset.push(tileToReset);
+//		var tileToReset = {x: x, y: y, hp: this.tileMap[x][y].hp, type: tileType, running: false, reseted: false};
+//		this.tilesToReset.push(tileToReset);
 
 		return(deleted);
 	}

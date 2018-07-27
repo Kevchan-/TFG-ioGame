@@ -1,55 +1,55 @@
 class Threat{
-	constructor(game, pos, type, server){
+	constructor(game, pos, type, server, playerId){
 		this.pos = pos;
 		this.type = type;
 		this.ended = false;
 		this.game = game;
 		this.server = server;
+		this.timer = 3;
+		this.exploded = false;
+		this.damage = 5;	
+		this.tilesAffected = [];
+		this.player = playerId;
+
+		var random = Math.random();
+		if(!server){
+			this.sprite = AddSprite("bomb", pos);
+			Flickering(this.sprite, 0x00ff00, this.timer+0.3, 0.5);
+		}
+
+		if(type == 5){
+			this.strength = 1;
+		}		
+		else if(type == 6){
+			this.strength = 2;
+		}
+		else if(type == 7){
+			this.strength = 3;
+		}
+
+		console.log("bomb "+this.strength);
+
 		switch(type){
 			case 5:
-			console.log("bomb");
-			this.timer = 3;
-			if(!server){
-				this.sprite = AddSprite("bomb", pos);
-				Flickering(this.sprite, 0x00ff00, this.timer+0.3, 0.5);
-			}
-			this.exploded = false;
-			this.damage = 5;
 
-			var random = Math.random();
-			this.strength = 1;
-			if(random > 0.5){
-				this.strength = 2;
-			}
-			if(random > 0.8){
-				this.strength = 3;
-			}
-			break;
-			case 6:
-			break;
-			case 7:
 			break;
 		}
 	}
 
 	Update(deltaTime){
-		switch(this.type){
-			case 5:
 			if(!this.exploded){
 //				console.log("updating "+ this.timer);
 				if(this.timer <= 0){
 					this.exploded = true;
-					this.Explode();
+						this.Explode();
 				}
 				else{
 					this.timer -= deltaTime;
 				}
 			}
 
-			break;
-			case 6:
-			break;
-			case 7:
+			switch(this.type){
+				case 5:
 			break;
 		}
 	}
@@ -69,8 +69,6 @@ class Threat{
 			radius = 8;
 		}
 
-		var tilesAffected = [];
-
 		for(var i = -radius; i <= radius; i++){
 			for(var j = -radius; j <= radius; j++){
 				var posX = this.pos.x+i;
@@ -86,26 +84,41 @@ class Threat{
 
 					if(Math.abs(distanceToCenter) <= radius){
 						if(!this.server){
-							tilesAffected.push({x: tile.x, y: tile.y});
+							this.tilesAffected.push({x: tile.x, y: tile.y});
 						}
 						else{
-							tilesAffected.push(tile);
+							this.tilesAffected.push(tile);
+							this.game.map.HitTile(tile.x, tile.y, this.damage, null);
 						}
 					}
 				}
 			}
 		}
-	    
+	    console.log("BOOM");
+//	    console.log("Tiles affected: "+this.tilesAffected.length);
 		if(this.server){
-			this.CheckForPlayersAffected(tilesAffected, 2, 0.5);
+			this.CheckForPlayersAffected(this.tilesAffected, 2, 0.5);
 		}
 		else{
-		    if(emitterExplosions == null){
-			    CreateEmitter(3);
-	  	    }					
-				ParticlesBurst(3, tilesAffected, 4, 0.5);
-			this.ended = true;
+		     if(emitterExplosions == null){
+			     CreateEmitter(3);
+	   	    }					
+			 	ParticlesBurst(3, this.tilesAffected, 4, 0.5);
+			 this.ended = true;
 		}
+	}
+
+	ClientExplode(tilesAffected){
+		for(var i = 0; i < tilesAffected; i++){
+			tile = tilesAffected[i];
+			this.game.map.HitTile(tile.x, tile.y, this.damage, null);
+		}
+
+		if(emitterExplosions == null){
+			CreateEmitter(3);
+	   	    }					
+	 	ParticlesBurst(3, tilesAffected, 4, 0.5);
+		this.ended = true;		
 	}
 
 	CheckForPlayersAffected(tiles, times, interval){
@@ -119,7 +132,7 @@ class Threat{
 						var posX = tiles[i].x;
 						var posY = tiles[i].y;
 						
-						if(Math.floor(players[player].pos.x) == posX && Math.floor(players[player].pos.y) == posY){
+						if(Math.round(players[player].pos.x) == posX && Math.round(players[player].pos.y) == posY){
 							players[player].healthPoints -= this.damage;
 							break;
 						}

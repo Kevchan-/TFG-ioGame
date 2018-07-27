@@ -32,7 +32,7 @@ class Player{
 		this.lastProcessedInput = -1;				//for reconc., index of last processed input
 		this.positionBuffer = [];	
 
-		this.maxHealthPoints = 3;
+		this.maxHealthPoints = 5;
 		this.healthPoints = this.maxHealthPoints;
 		this.immuneTime = 0.2;
 		this.damage = 1;
@@ -43,6 +43,11 @@ class Player{
 		this.dead = true;
 		this.wasMurdered = false;
 
+		this.powerUp = null;
+		this.powerUpButtonDown = false;	//clientside
+		this.usingPowerUp = false;		//serverside
+		this.tileTrailButtonDown = false;	//clientside
+		this.usingTileTrail = false;		//serverside
 
 		this.pos = {
 			x: 0,
@@ -71,6 +76,7 @@ class Player{
 //			console.log("Player created");
 		}
 		this.isSelf = isSelf;
+		this.DataRecord();
 	}
 
 	DataRecord(){
@@ -131,11 +137,32 @@ class Player{
 			if(this.sprite){
 				this.sprite.visible = true;	
 				if(this.isSelf){
-					SetCameraTarget(this.sprite);					
+					SetCameraTarget(this.sprite);				
 					this.SetPosition(this.pos);
 				}
 				console.log("revived position: "+this.pos.x+", "+this.pos.y);
 			}
+			if(this.isSelf){
+				document.getElementById('tileButton').addEventListener('click', this.HandleTileButton.bind(this));			
+				document.getElementById('panelContainer').style.display = "none";
+			}
+		}
+
+	}
+
+	HandleTileButton(){
+		if(this.server){
+			if(this.usingTileTrail){
+				this.usingTileTrail = false;
+//				console.log(this.usingTileTrail);
+			}
+			else{
+				this.usingTileTrail = true;
+//				console.log(this.usingTileTrail);
+			}
+		}
+		else{
+			this.tileTrailButtonDown = true;
 		}
 	}
 
@@ -238,9 +265,6 @@ class Player{
 					this.pendingInputs.splice(i, 1);
 				}
 			}
-
-
-
 	}
 
 	ClientProcessInputs(socket, time){	//we check the current inputs to store them for later reconciliation and send them to the server right now
@@ -254,10 +278,12 @@ class Player{
 
 //		game.debug.text(this.pos.x.toFixed(1)+", " +this.pos.y.toFixed(1), spritePos.x, spritePos.y);
 
-		var spritePos = this.sprite.worldPosition;			
+//		var spritePos = this.sprite.worldPosition;
+		var spritePos = {x: this.sprite.worldPosition.x+tileSize/2, y: this.sprite.worldPosition.y+tileSize/2};
 		var spriteWorldPos = this.sprite.position;
 //		game.debug.text(spriteWorldPos.x+", " +spriteWorldPos.y, spritePos.x, spritePos.y);
 
+		if(!this.sprite.input.pointerOver())
 		if(game.input.activePointer.isDown){
 			var angle = GetAngle(spritePos, game.input.activePointer.position);
 //			game.debug.geom(point, 'rgba(255,255,0,1)');
@@ -297,7 +323,7 @@ class Player{
 
 		var newDestination = this.ApplyInput(input, deltaTime);
 
-		if(newDestination || newDestination == 'hit'){
+		if((newDestination != 'limit' || newDestination == 'hit' ) && newDestination != false){
 			input.sequenceNumber = this.lastInputSequenceNumber;
 //			console.log(input.sequenceNumber+": "+newDestination+", "+this.pos.x+", "+this.pos.y);
 			this.lastInputSequenceNumber++;
@@ -312,6 +338,22 @@ class Player{
 			this.game.socket.send(serialized);
 			this.pendingInputs.push(input);
 		}
+		if(this.powerUpButtonDown){
+			var serialized = JSON.stringify(this.powerUpButtonDown);
+			this.game.socket.send("b.p."+serialized);
+			this.powerUpButtonDown = false;
+		}
+		if(this.tileTrailButtonDown){
+			var serialized = JSON.stringify(this.tileTrailButtonDown);
+			this.game.socket.send("b.t."+serialized);
+			this.tileTrailButtonDown = false;
+			if(this.usingTileTrail){
+				this.usingTileTrail = false;
+			}
+			else{
+				this.usingTileTrail = true;
+			}
+		}
 	}
 
 	ServerProcessInputs(){
@@ -324,25 +366,26 @@ class Player{
 
 		var numberOfInputs = this.inputs.length;
 
-	//	this.reached = false;
 
 		this.receivedInput = false;
 		if(numberOfInputs){
+
 			for(var i = 0; i < numberOfInputs; i++){
 				if(this.inputs[i].sequenceNumber > this.lastInputSequenceNumber){
 					this.receivedInput = true;
 					input.key = this.inputs[i].key;
+					input.powerUp = this.inputs[i].powerUpButtonDown;
 					var newDestination = this.ApplyInput(input, deltaTime);
 
 			//		console.log(this.inputs[i].sequenceNumber+": "+newDestination+", "+this.pos.x+", "+this.pos.y);
 					if(newDestination == "hit"){
 			//			console.log(newDestination);
 						this.lastInputSequenceNumber = this.inputs[i].sequenceNumber;
-						this.inputs.splice(0, i+1);	
+						this.inputs.splice(0, i+1);
 					}
 					else if(newDestination){
 						this.lastInputSequenceNumber = this.inputs[i].sequenceNumber;
-						this.inputs.splice(0, i+1);						
+						this.inputs.splice(0, i+1);
 					}
 					else{
 
@@ -354,38 +397,49 @@ class Player{
 			}
 		}
 
-		if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){
-
-//			this.reached = true;
-
-		}
-
 		if(this.reached){
+
 			var drop = this.game.map.drops[this.pos.x][this.pos.y];
 
 			if(drop){
 				this.game.map.RemoveDrop(drop);
+				this.points++;
 				//todo apply effects
 			}			
 		}
 	}
 
+	ServerButtonInput(data){
+		var messageParts = data.split('.');
+		var type = messageParts[0];
+
+		if(type == 't'){
+			this.HandleTileButton();
+		}
+		else if(type == 'p'){
+			var input = {};
+			this.usingPowerUp = true;
+			console.log("power up");
+			this.powerUp.Use();			
+		}
+	}
 
 	ApplyInput(input, deltaTime){
 		var newDestination = false;
+		var tilehp = 10000;
 
 		if(this.moving && !this.coolingDown && !this.attackCoolDown){
 			if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){	//if we already reached 
 		//		this.reached = true;
 				this.moving = false;	//then don't move at all this frame and mark as not moving
 //				console.log("moving set to false");
-
+				
 				this.lastTile.x = Math.trunc(this.pos.x);
 				this.lastTile.y = Math.trunc(this.pos.y);
 	
 				if(input.key !== "n"){	//check for input the same frame so that we don't stop
 					var destination = this.GetDestination(input.key, this.game.map);
-					if(destination.state != 'hit'){
+					if(destination.state == 'moved'){
 						this.destination = destination;
 						this.lastDirectionInput = input.key;
 						this.moving = true;
@@ -393,20 +447,33 @@ class Player{
 					}
 					else if(destination.state == 'hit'){
 //						console.log("tile "+destination.x+", " +destination.y);
-						this.HitTile(destination);
+						tilehp = this.HitTile(destination);
 						newDestination = 'hit';
 						this.coolingDown = true;
+
+						if(this.usingPowerUp){
+							if(this.powerUp.type == 8){
+								if(tilehp == 0){
+									this.destination = destination;
+									this.lastDirectionInput = input.key;
+									this.moving = true;									
+									newDestination = true;
+									this.coolingDown = false;
+								}				
+							}
+						}												
+					}
+					else if(destination.state == 'limit'){
+						newDestination = 'limit';
+						console.log(this.moving);
 					}
 				}
-			}
-			else{	//we not there
-		//		this.reached = false;
 			}
 		}
 		else if(!this.coolingDown && !this.attackCoolDown){
 			if(input.key !== "n"){	//if we're not moving check for input that tells us to move
 				var destination = this.GetDestination(input.key, this.game.map, deltaTime);
-				if(destination.state != 'hit'){
+				if(destination.state == 'moved'){
 					this.destination = destination;
 					this.moving = true;
 
@@ -416,15 +483,36 @@ class Player{
 				}
 				else if(destination.state == 'hit'){
 			//		console.log("tile "+destination.x+", " +destination.y);
-					this.HitTile(destination);
+					tilehp = this.HitTile(destination);
 					newDestination = 'hit';
 					this.coolingDown = true;
-				}
-				else if(destination.state == 'attack'){
 
+					if(this.usingPowerUp){
+						if(this.powerUp.type == 8){
+							if(tilehp == 0){
+								this.destination = destination;
+								this.lastDirectionInput = input.key;
+								this.moving = true;									
+								newDestination = true;
+								this.coolingDown = false;
+							}				
+						}
+					}							
+				}
+				else if(destination.state == 'limit'){
+					newDestination = 'limit';
 				}
 			}
 		}
+
+		if(this.usingPowerUp){
+			if(this.powerUp.type == 8){
+				if(tilehp == 0){
+					this.coolingDown = false;
+				}				
+			}
+		}
+
 		return(newDestination);
 	}
 
@@ -439,12 +527,18 @@ class Player{
 					this.immuneCounter = 0;
 				}
 			}
-
+			var reached = this.reached;
 			this.UpdatePhysics(deltaTime);
+
+			if(this.reached){
+				if(!reached){
+					if(this.usingTileTrail){
+						console.log("put");
+						this.CreateTile();
+					}
+				}
+			}
 		}
-
-
-
 	}
 
 	UpdatePhysics(deltaTime){
@@ -454,6 +548,7 @@ class Player{
 
 //		console.log("moving: "+this.moving);
 
+
 		if(this.server){
 			if(!this.receivedInput){
 				if(this.pos.x == this.destination.x && this.pos.y == this.destination.y){
@@ -462,7 +557,7 @@ class Player{
 					if(typeof(this.lastTile) != "undefined"){
 						this.lastTile.x = Math.trunc(this.pos.x);
 						this.lastTile.y = Math.trunc(this.pos.y);						
-					}					
+					}
 				}
 			}
 		}
@@ -513,6 +608,18 @@ class Player{
 				this.attackCoolDown = false;
 			}
 		}
+
+
+	}
+
+	CreateTile(){
+		var tile = {x: this.lastTile.x, y: this.lastTile.y, type: 1, hp: 1};
+		if(this.server){
+			this.game.map.ResetTile(tile);
+		}
+		else{
+			this.game.map.PutTile(tile.x, tile.y, tile.type, tile.hp, true);
+		}
 	}
 
 
@@ -535,19 +642,20 @@ class Player{
 				tile.x = tile.x - 1;
 				break;
 		}
-		if(tile.x < 0 || tile.y < 0 || tile.x > 20 || tile.y > 20){
-
+		if(tile.x < 0 || tile.y < 0 || tile.x >= this.game.map.tileMap.width || tile.y >= this.game.map.tileMap.height){
+			tile.state = "limit"
+//			console.log("limit");
 		}
-		if(!map.IsTileFree(tile.x, tile.y)){
-			tile.state = "hit";
-	//		console.log("tile "+tile.x+", " +tile.y);
+		else if(!map.IsTileFree(tile.x, tile.y)){
+				tile.state = "hit";
+		//		console.log("tile "+tile.x+", " +tile.y);
 		}
 
 		return(tile);
 	}
 
 	HitTile(tilePos){
-		this.game.map.HitTile(tilePos.x, tilePos.y, this.damage, this.id);
+		var hp = this.game.map.HitTile(tilePos.x, tilePos.y, this.damage, this.id);
 
 		if(!this.server){
 			if(emitterTiles == null){
@@ -557,6 +665,8 @@ class Player{
 				ParticleBurst.bind(this, 2, tilePos, 5), 100
 			);
 		}
+
+		return(hp);
 	}
 
 	ReceiveAttack(damage, attackerId){
@@ -590,8 +700,19 @@ class Player{
 					this.wasMurdered = true;
 					SetCameraTarget(this.game.players[killerId].sprite);
 				}
+				setTimeout(
+				this.ShowGamePanel.bind(this), 1000);
 			}
 		}
+	}
+
+	ShowGamePanel(){
+		$("#playButton").click(function(){
+			this.game.socket.send('b.r.');
+		}.bind(this));
+		$("#mainText").text("YOU DIED!");
+		$("#playButtonText").text("Play again!");
+		$("#panelContainer").fadeIn("slow");
 	}
 
 	LookForCollisions(pos){
@@ -801,7 +922,9 @@ class Player{
 			this.sprite = AddSprite('red', cords);
 			this.sprite.visible = true;
 			this.serverSprite.visible = false;
-			SetCameraTarget(this.sprite);			
+			SetCameraTarget(this.sprite);
+
+			this.sprite.inputEnabled = true;
 		}
 		else{
 			this.sprite = AddSprite('blue', cords);

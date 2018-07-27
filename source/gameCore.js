@@ -24,15 +24,13 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 	}
 	width = Math.round(width);
 	height = Math.round(height);
-	var game = new Phaser.Game(width, height, Phaser.CANVAS, '', { preload: Preload, create: Create }, false, false);
-	
+	var game = new Phaser.Game(width, height, Phaser.CANVAS, 'gameCanvas', { preload: Preload, create: Create }, false, false);
 //	console.log("Window dimensions: "+window.innerWidth+", "+window.innerHeight);
 }
 
 
 class GameCore{
 	constructor(room){
-
 		this.room = room;
 		this.server = false;	//is this run by the server or by a client
 		this.gameNet;
@@ -61,7 +59,6 @@ class GameCore{
 			this.ClientConnectToServer();
 		}
 
-
 		this.entityInterpolation = true;
 		this.clientSmoothing = 10;
 	}
@@ -89,13 +86,24 @@ class GameCore{
 	}
 
 	ServerAddPlayer(client){
-		this.players[client.userid] = new PlayerObject(this, client);			
+		this.players[client.userid] = new PlayerObject(this, client);
 		this.playerCount++;
 	}
 
 	ServerStartGame(map){
 		this.active = true;
 		this.Update();
+	}
+
+
+	ServerRevivePlayer(id){
+		console.log("SERVER REVIVE PLAYER");
+		var cords = {};
+		cords.x = Math.floor(Math.random()*(20));
+		cords.y = Math.floor(Math.random()*(20));
+		this.players[id].SetUpParameters(cords, id);
+
+		this.map.RemoveTile(cords.x, cords.y, null, true);
 	}
 
 	ServerUpdate(){
@@ -114,10 +122,7 @@ class GameCore{
 						this.players[playerid].spawnCounter += this.localDeltaTime;
 					}
 					else{
-						var cords = {};
-						cords.x = Math.floor(Math.random()*(20));
-						cords.y = Math.floor(Math.random()*(20));
-						this.players[playerid].SetUpParameters(cords, playerid);
+						//this.ServerRevivePlayer(playerid);
 					}
 				}
 
@@ -136,6 +141,9 @@ class GameCore{
 				state[playerid].hitting = this.players[playerid].hitting;
 				state[playerid].lastTile = this.players[playerid].lastTile;
 				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;
+				state[playerid].usePowerUp = this.players[playerid].usingPowerUp;
+//				console.log(state[playerid].usePowerUp);
+
 						//		console.log("Server update: "+state[playerid].pos.x+", "+state[playerid].pos.y);
 			}
 		}
@@ -156,7 +164,6 @@ class GameCore{
 				state.tilesState[tile.x+"x"+tile.y].attacker = tile.attacker;
 				state.tilesState[tile.x+"x"+tile.y].drop = tile.randomDrop;
 				state.tilesState[tile.x+"x"+tile.y].justDied = tile.justDied;
-
 			}
 		}
 
@@ -199,7 +206,33 @@ class GameCore{
 			}
 		}
 
-	    if(this.map.pendingChangedTiles.length>=3){
+		if(this.map.pendingTakenPowerUps.length){
+			state.powerUps = {};
+		}
+
+		for(var tiles in this.map.pendingTakenPowerUps){
+			if(this.map.pendingTakenPowerUps.hasOwnProperty(tiles)){
+				var pUp = this.map.pendingTakenPowerUps[tiles];
+				state.powerUps[pUp.x+"x"+pUp.y] = {};
+				state.powerUps[pUp.x+"x"+pUp.y].x = pUp.x;
+				state.powerUps[pUp.x+"x"+pUp.y].y = pUp.y;
+				state.powerUps[pUp.x+"x"+pUp.y].player = pUp.player;
+				state.powerUps[pUp.x+"x"+pUp.y].justTaken = pUp.justTaken;
+			}
+		}
+
+		for(var i = 0; i < this.map.pendingTakenPowerUps.length; i++){
+			if(this.map.pendingTakenPowerUps[i].justTaken){
+			//	console.log("new pup: "+state.powerUps[tile.x+"x"+tile.y].x+", "+state.powerUps[tile.x+"x"+tile.y].y);
+			}
+			this.map.pendingTakenPowerUps[i].justTaken = false;
+		}
+
+		if(this.map.pendingTakenPowerUps.length >= 3){
+			this.map.pendingTakenPowerUps.splice(0,1);
+		}
+
+	    if(this.map.pendingChangedTiles.length>=100){
 			  this.map.pendingChangedTiles.splice(0, 1);
 	    }
 
@@ -208,7 +241,7 @@ class GameCore{
 	    }*/
 
 	    this.map.pendingAddedTiles = [];
-	    if(this.map.pendingDrops.length>=3){
+	    if(this.map.pendingDrops.length>=100){
 			  this.map.pendingDrops.splice(0, 1);
 	    }	    
 
@@ -234,13 +267,16 @@ class GameCore{
 		this.players[client.userid].ServerStoreInput(data);
 	}
 
+	ServerHandleButtonInput(client, data){
+		this.players[client.userid].ServerButtonInput(data);
+	}
+
 	ClientUpdate(deltaTime){	
 		//process server messages
 		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime);
 		this.selfPlayer.Update(this.localDeltaTime);
 		this.map.Update(this.localDeltaTime);
 		this.ClientProcessNetUpdates();
-
 	}
 
 	ClientEntityInterpolation(){
@@ -327,13 +363,18 @@ class GameCore{
 
 			if(this.selfPlayer.healthPoints <= 0 && !this.selfPlayer.dead){
 				this.selfPlayer.KillPlayer(state[this.selfPlayer.id].lastPersonWhoHit);
+			}
 
+			if(this.selfPlayer.powerUp){
+				if(!this.selfPlayer.powerUp.active && state[this.selfPlayer.id].usePowerUp){
+					this.selfPlayer.powerUp.Use();
+				}
 			}
 
 			for(var playerid in this.players){
 				if(this.players.hasOwnProperty(playerid) && typeof(state[playerid]) != "undefined"){
 					if(typeof(state[playerid]) == "undefined"){
-						console.log(state);
+//						console.log(state);
 					}
 
 					if(this.players[playerid].healthPoints > state[playerid].healthPoints && state[playerid].lastPersonWhoHit != this.selfPlayer.id){
@@ -385,21 +426,21 @@ class GameCore{
 						var dropPos = {x: rTile.x, y: rTile.y};
 						if(rTile.justDied){
 							if(this.map.RemoveTile(rTile.x, rTile.y)){
-//								console.log("server type: "+type);
-								this.map.AddDrop(this, dropPos, 5);							
+								this.map.AddDrop(this, dropPos, type);
 							}
 						}
 					}
 
+					if(rTile.attacker)
 					if(rTile.attacker !== this.selfPlayer.id){
 						if(rTile.hp <= 0 && rTile.justDied || rTile.hp > 0){
-						if(emitterTiles == null){
-							CreateEmitter(2);
-						}
-						console.log("hp "+rTile.hp);
-						setTimeout(
-							ParticleBurst.bind(this, 2, {x: rTile.x, y: rTile.y}, 5), 100
-						);
+							if(emitterTiles == null){
+								CreateEmitter(2);
+							}
+//							console.log("hp "+rTile.hp);
+							setTimeout(
+								ParticleBurst.bind(this, 2, {x: rTile.x, y: rTile.y}, 5), 100
+							);
 						}
 					}
 					
@@ -411,7 +452,8 @@ class GameCore{
 			for(var tile in serverAddedTiles){
 				if(serverAddedTiles.hasOwnProperty(tile)){
 					var newTile = serverAddedTiles[tile];
-					this.map.PutTile(newTile.x, newTile.y, newTile.type);
+//					console.log("put tile");
+				//	this.map.PutTile(newTile.x, newTile.y, newTile.type);
 				}
 			}
 
@@ -427,6 +469,33 @@ class GameCore{
 					}
 				}
 			}
+
+			var serverTakenPowerUps = state.powerUps;
+
+			for(var pUps in serverTakenPowerUps){
+				if(serverTakenPowerUps.hasOwnProperty(pUps)){
+					var pUp = serverTakenPowerUps[pUps];
+					var id = pUps;
+//					console.log(pUps);
+					if(pUp.justTaken){
+//						console.log("theres new power up: "+id);
+					}
+
+					for(var i = 0; i < this.map.powerUps.length; i++){
+//						console.log("pup");
+//						console.log("client powerup: "+this.map.powerUps[i].id);
+						if(this.map.powerUps[i].id == id && pUp.justTaken){
+							if(this.selfInstance){
+								this.map.powerUps[i].Take(pUp.player);
+							}
+							else{
+								this.map.powerUps[i].End();
+							}
+							break;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -437,7 +506,7 @@ class GameCore{
 		if(this.selfPlayer.dead && !state[this.selfPlayer.id].dead){
 //				console.log("net revived position: "+state[this.selfPlayer.id].pos.x+", "+state[this.selfPlayer.id].pos.y);
 				this.selfPlayer.SetUpParameters(state[this.selfPlayer.id].pos, this.selfPlayer.id);
-			}
+		}
 
 //		console.log(state);
 		var lastState = this.serverUpdates[this.serverUpdates.length-1];
@@ -460,10 +529,20 @@ class GameCore{
 		}
 	}
 
+	ClientPlayerStart(clientId){
+		if(this.selfPlayer.id == clientId){
+			this.selfPlayer.SetUpParameters(this.selfPlayer.pos, clientId);
+		}
+		else{
+			this.players[clientId].SetUpParameters(this.players[clientId].pos, clientId);	
+		}
+	}
+
 	ClientAddPlayer(clientId){
 		if(this.playerCount == 0){
 			this.selfPlayer = new Player(this, null, true);
 			this.selfPlayer.SetUpParameters(this.selfPlayer.pos, clientId);
+			this.selfInstance = true;
 //			console.log("Your player was created. You are: "+clientId);
 		}
 		else{
@@ -558,7 +637,11 @@ class GameCore{
 	}
 
 	ClientOnConnected(data){
-//		console.log("You connected");
+		document.getElementById("playButton").addEventListener('click', function(){
+			console.log("pulsado");
+			this.socket.send('b.s.');
+		}.bind(this));
+		console.log("You connected");
 //		this.selfPlayer.state = ''
 //		this.selfPlayer.state = 'connected';
 //		this.selfPlayer.online = true;
