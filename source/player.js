@@ -12,15 +12,25 @@ var angleDeg = (Math.atan2(obj2.y - obj1.y, obj2.x - obj1.x) * 180 / Math.PI);
 return angleDeg;
 }
 
+function rgb2hex(rgb){
+ rgb = rgb.match(/^rgba?[\s+]?\([\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?,[\s+]?(\d+)[\s+]?/i);
+ return (rgb && rgb.length === 4) ? "#" +
+  ("0" + parseInt(rgb[1],10).toString(16)).slice(-2) +
+  ("0" + parseInt(rgb[2],10).toString(16)).slice(-2) +
+  ("0" + parseInt(rgb[3],10).toString(16)).slice(-2) : '';
+}
+
 class Player{
 	constructor(game, client, isSelf){
 
+		this.putTiles = [];
 		this.socket = client;
 		this.id = "";
 		this.game = game;
 		this.host = false;
 		this.server = false;
 		this.sprite = null;	//clientside only
+		this.border = null;
 		this.serverSprite = {};		//debug server sprite position
 		this.receivedInput = false;
 		this.lastInputSequenceNumber = 0;
@@ -32,6 +42,7 @@ class Player{
 		this.lastProcessedInput = -1;				//for reconc., index of last processed input
 		this.positionBuffer = [];	
 
+		this.teamColor;
 		this.maxHealthPoints = 5;
 		this.healthPoints = this.maxHealthPoints;
 		this.immuneTime = 0.2;
@@ -47,7 +58,7 @@ class Player{
 		this.powerUpButtonDown = false;	//clientside
 		this.usingPowerUp = false;		//serverside
 		this.tileTrailButtonDown = false;	//clientside
-		this.usingTileTrail = false;		//serverside
+		this.usingTileTrail = true;		//serverside
 
 		this.pos = {
 			x: 0,
@@ -66,6 +77,7 @@ class Player{
 		};
 
 		if(this.socket){
+			this.name = this.socket.name;
 //			console.log("Player created in server");
 			this.id = client.userid;
 			this.lastInputSequenceNumber = -1;
@@ -129,24 +141,32 @@ class Player{
 		this.pObject = this.game.pWorld.add(new SSCD.Rectangle(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize), new SSCD.Vector(this.size.x/2, this.size.y/2)));		
 		this.pObject.id = id;
 
-		this.lastTile = {};
-		this.lastTile.x = Math.trunc(this.pos.x);
-		this.lastTile.y = Math.trunc(this.pos.y);
 
 		if(!this.server){
 			if(this.sprite){
-				this.sprite.visible = true;	
+				this.sprite.visible = true;
+				this.border.visible = true;	
 				if(this.isSelf){
 					SetCameraTarget(this.sprite);				
-					this.SetPosition(this.pos);
+					this.SetPosition(this.pos);		
 				}
 				console.log("revived position: "+this.pos.x+", "+this.pos.y);
 			}
 			if(this.isSelf){
 				document.getElementById('tileButton').addEventListener('click', this.HandleTileButton.bind(this));			
 				document.getElementById('panelContainer').style.display = "none";
+				document.getElementById('rankingPanel').style.display = "block";
 			}
 		}
+		else{
+			this.name = this.socket.name;
+
+			console.log(this.name);
+		}
+
+		this.lastTile = {};
+		this.lastTile.x = Math.trunc(this.pos.x);
+		this.lastTile.y = Math.trunc(this.pos.y);
 
 	}
 
@@ -403,7 +423,6 @@ class Player{
 
 			if(drop){
 				this.game.map.RemoveDrop(drop);
-				this.points++;
 				//todo apply effects
 			}			
 		}
@@ -447,6 +466,7 @@ class Player{
 					}
 					else if(destination.state == 'hit'){
 //						console.log("tile "+destination.x+", " +destination.y);
+
 						tilehp = this.HitTile(destination);
 						newDestination = 'hit';
 						this.coolingDown = true;
@@ -456,12 +476,12 @@ class Player{
 								if(tilehp == 0){
 									this.destination = destination;
 									this.lastDirectionInput = input.key;
-									this.moving = true;									
+									this.moving = true;	
 									newDestination = true;
 									this.coolingDown = false;
-								}				
+								}
 							}
-						}												
+						}
 					}
 					else if(destination.state == 'limit'){
 						newDestination = 'limit';
@@ -533,8 +553,13 @@ class Player{
 			if(this.reached){
 				if(!reached){
 					if(this.usingTileTrail){
-						console.log("put");
-						this.CreateTile();
+						if(typeof(this.firstMovement) == "undefined" && !this.server){
+							this.firstMovement = true;
+//							this.CreateTile({x: this.lastTile.x, y: this.lastTile.y});
+						}
+						else{
+							this.CreateTile({x: this.lastTile.x, y: this.lastTile.y});
+						}
 					}
 				}
 			}
@@ -612,13 +637,26 @@ class Player{
 
 	}
 
-	CreateTile(){
-		var tile = {x: this.lastTile.x, y: this.lastTile.y, type: 1, hp: 1};
+	CreateTile(pos){
+		var type = 1;
+		var hp = 1;
+		if(this.usingPowerUp){
+			if(this.powerUp.type == 11 && this.powerUp.active){
+				type = 2;
+				hp = 2;
+			}
+		}
+
+		var tile = {x: pos.x, y: pos.y, type: type, hp: 1};
+
+
 		if(this.server){
-			this.game.map.ResetTile(tile);
+			this.game.map.ResetTile(tile, this.id);
+			this.points++;
 		}
 		else{
-			this.game.map.PutTile(tile.x, tile.y, tile.type, tile.hp, true);
+			this.game.map.PutTile(tile.x, tile.y, tile.type, this.id);
+			this.points++;
 		}
 	}
 
@@ -655,7 +693,13 @@ class Player{
 	}
 
 	HitTile(tilePos){
-		var hp = this.game.map.HitTile(tilePos.x, tilePos.y, this.damage, this.id);
+		var powerUp = false;
+		if(this.usingPowerUp){
+			if(this.powerUp.type == 8){
+				powerUp = true;
+			}
+		}
+		var hp = this.game.map.HitTile(tilePos.x, tilePos.y, this.damage, this.id, powerUp);
 
 		if(!this.server){
 			if(emitterTiles == null){
@@ -671,7 +715,16 @@ class Player{
 
 	ReceiveAttack(damage, attackerId){
 		this.lastPersonWhoHit = attackerId;
+		var damage = damage;
+		
+		if(this.usingPowerUp){
+			if(this.powerUp.type == 10){
+				damage = 0;
+			}
+		}
+
 		this.healthPoints -= damage;
+
 		if(!this.server){
 			if(emitter == null){
 				CreateEmitter(1);
@@ -679,7 +732,7 @@ class Player{
 
 			setTimeout(
 				ParticleBurst.bind(this, 1, this.pos, 10), 100
-				);
+			);
 		}
 	}
 
@@ -687,16 +740,24 @@ class Player{
 		this.dead = true;
 		this.killedN++;
 //		this.pObject.set_position()
-		this.game.pWorld.remove(this.pObject);
+		if(this.pObject){
+			this.game.pWorld.remove(this.pObject);
+		}
+		this.game.map.PlayerLeft(this.id);
+		if(this.powerUp){
+			this.powerUp.End();
+		}
+		this.points = 0;
 		delete this.pObject;
 		console.log(this.id+" died");
 //		console.log(this.game.pWorld);
 	
 		if(!this.server){
 			this.sprite.visible = false;
+	    	this.border.visible = false;
 			if(this.isSelf){
 				console.log("following "+killerId);
-				if(typeof(killerId) != undefined && killerId != null){
+				if(typeof(killerId) != "undefined" && killerId != null){
 					this.wasMurdered = true;
 					SetCameraTarget(this.game.players[killerId].sprite);
 				}
@@ -707,12 +768,15 @@ class Player{
 	}
 
 	ShowGamePanel(){
-		$("#playButton").click(function(){
-			this.game.socket.send('b.r.');
-		}.bind(this));
+		$("#playButton").click(this.game.SendPlayRequest.bind(this.game, false));
+		$("#name").focus()
 		$("#mainText").text("YOU DIED!");
 		$("#playButtonText").text("Play again!");
 		$("#panelContainer").fadeIn("slow");
+		$("#rankingPanel").fadeOut("slow");
+	}
+
+	SendPlayRequest(){
 	}
 
 	LookForCollisions(pos){
@@ -825,6 +889,10 @@ class Player{
 			direction.y = 0;
 		}
 
+		if(!this.server){
+			this.RotateSprite(direction);
+		}
+
 		var simulatedPos = this.pos;
 		var playerCollision = false;
 
@@ -895,6 +963,37 @@ class Player{
 	}
 
 	SetPosition(pos){
+
+		var direction = {};
+		if(!this.isSelf){
+			direction.x = pos.x - this.pos.x;
+			direction.y = pos.y - this.pos.y;			
+
+
+			if(direction.x > 0){
+				direction.x = 1;
+			}
+			else if(direction.x < 0){
+				direction.x = -1;
+			}
+			else{
+				direction.x = 0;
+			}
+			if(direction.y > 0){
+				direction.y = 1;
+			}
+			else if(direction.y < 0){
+				direction.y = -1;
+			}
+			else{
+				direction.y = 0;
+			}
+
+			if(!this.server){
+				this.RotateSprite(direction);
+			}
+		}
+
 		this.pos.x = pos.x;
 		this.pos.y = pos.y;	
 
@@ -902,11 +1001,9 @@ class Player{
 			this.pObject.set_position(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize));
 		}
 		
-
-//		if(!this.isSelf){
-//		}
 		if(!this.server){
 			SetSpritePosition(this.sprite, pos);	//method on rendering
+			SetSpritePosition(this.border, pos);	//method on rendering
 //			this.game.pWorld.render(game.canvas);
 		}
 	}
@@ -917,23 +1014,57 @@ class Player{
 
 	CreateSprite(){
 		var cords = this.pos;
+		var sillhouetteBitMapData = createSillhouette('playerBorder');
+		this.border = game.add.sprite(cords.x*tileSize+tileSize/2,cords.y*tileSize+tileSize/2,sillhouetteBitMapData);
+		this.border.anchor.setTo(0.5); 
+		this.border.tint = rgb2hex(this.teamColor).replace("#", "0x");
+
+
+
 		if(this.isSelf){
 			this.serverSprite = AddSprite('blue', cords);
-			this.sprite = AddSprite('red', cords);
+			this.sprite = AddSprite('player', cords);
 			this.sprite.visible = true;
 			this.serverSprite.visible = false;
+			this.sprite.anchor.setTo(0.5);
+			this.serverSprite.anchor.setTo(0.5);
 			SetCameraTarget(this.sprite);
 
 			this.sprite.inputEnabled = true;
 		}
 		else{
-			this.sprite = AddSprite('blue', cords);
+			this.sprite = AddSprite('player', cords);
+		}
+			this.sprite.angle = 0;
+			this.border.angle = 0;
+	}
+
+	RotateSprite(vector){
+		console.log("rotate: "+vector.x);
+		if(vector.x == -1){
+			this.sprite.angle = 270;
+			this.border.angle = 270;
+		}
+		else if(vector.x == 1){
+			this.sprite.angle = 90;
+			this.border.angle = 90;
+		}
+		else if(vector.y == -1){
+			this.sprite.angle = 0;
+			this.border.angle = 0;
+		}
+		else if(vector.y == 1){
+			this.sprite.angle = 180;
+			this.border.angle = 180;
 		}
 	}
 
 	RemoveSprite(){
 		DeleteSprite(this.sprite);
-		this.game.pWorld.remove(this.pObject);
+		this.border.destroy();
+		if(this.pObject){
+			this.game.pWorld.remove(this.pObject);			
+		}
 	}
 }
 

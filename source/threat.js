@@ -5,35 +5,32 @@ class Threat{
 		this.ended = false;
 		this.game = game;
 		this.server = server;
-		this.timer = 3;
 		this.exploded = false;
-		this.damage = 5;	
+		this.damage = 6;	
 		this.tilesAffected = [];
 		this.player = playerId;
 
-		var random = Math.random();
+		if(type == 5){
+			this.strength = 1;
+			this.timer = 2;
+		}		
+		else if(type == 6){
+			this.strength = 2;
+			this.timer = 3;
+		}
+		else if(type == 7){
+			this.strength = 3;
+			this.timer = 4;
+		}
+
 		if(!server){
 			this.sprite = AddSprite("bomb", pos);
 			Flickering(this.sprite, 0x00ff00, this.timer+0.3, 0.5);
 		}
 
-		if(type == 5){
-			this.strength = 1;
-		}		
-		else if(type == 6){
-			this.strength = 2;
-		}
-		else if(type == 7){
-			this.strength = 3;
-		}
-
 		console.log("bomb "+this.strength);
 
-		switch(type){
-			case 5:
 
-			break;
-		}
 	}
 
 	Update(deltaTime){
@@ -88,7 +85,7 @@ class Threat{
 						}
 						else{
 							this.tilesAffected.push(tile);
-							this.game.map.HitTile(tile.x, tile.y, this.damage, null);
+							this.game.map.HitTile(tile.x, tile.y, this.damage, null, false);
 						}
 					}
 				}
@@ -133,7 +130,15 @@ class Threat{
 						var posY = tiles[i].y;
 						
 						if(Math.round(players[player].pos.x) == posX && Math.round(players[player].pos.y) == posY){
-							players[player].healthPoints -= this.damage;
+							if(players[player].usingPowerUp){
+								if(players[player].powerUp.type == 10){
+									
+								}
+							}
+							else{
+								players[player].healthPoints -= this.damage;
+							}
+
 							break;
 						}
 					}

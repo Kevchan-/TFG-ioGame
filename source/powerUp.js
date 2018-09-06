@@ -2,7 +2,7 @@ class PowerUp{
 	constructor(game, pos, type, server  ){
 		this.pos = pos;
 		this.id = pos.x+"x"+pos.y;
-		this.type = type;
+		this.type = 10;
 		this.ending = false;
 		this.ended = false;
 		this.game = game;
@@ -13,12 +13,25 @@ class PowerUp{
 		switch(type){
 			case 8:
 			console.log("Unstopable");
-			this.timer = 5;
-			if(!server){
-				this.sprite = AddSprite("powerUp", pos);
-			}
 			break;
+
+			case 9:
+			console.log("Super trail");
+			break;
+
+			case 10:
+			console.log("Endurance");
+			break;			
+
+			case 11:
+			console.log("Strong trail");
+			break;		
 		}
+		this.timer = 5;
+
+		if(!server){
+			this.sprite = AddSprite("powerUp", pos);
+		}		
 	}
 
 	Take(player){
@@ -44,18 +57,31 @@ class PowerUp{
 			this.taken = true;
 			switch(this.type){
 				case 8:
-				this.timer = 6;	//reset timer, now its used for when player activates the powerup
-				if(!this.server){
-					DeleteSprite(this.sprite);
-				//	if(!game.device.desktop){
-					if(this.self){
-						document.getElementById('powerButton').style.display = "block";
-						document.getElementById('powerButton').addEventListener('click', this.ProcessInput.bind(this));
-					}
-				//	}
-				}
+				this.timer = 9;	//reset timer, now its used for when player activates the powerup
+				break;
+
+				case 9:
+				this.timer = 8;
+				break;
+
+				case 10:
+				this.timer = 10;
+				break;
+
+
+				case 11:
+				this.timer = 12;
 				break;
 			}
+
+			if(!this.server){
+				DeleteSprite(this.sprite);
+			
+				if(this.self){
+					document.getElementById('powerButton').style.display = "block";
+					document.getElementById('powerButton').addEventListener('click', this.ProcessInput.bind(this));
+				}				
+			}	
 		}
 	}
 
@@ -76,16 +102,13 @@ class PowerUp{
 				}
 			}
 
-			switch(this.type){
-				case 6:
-				if(!this.server){
-					if(this.self){
-						document.getElementById('powerButton').removeEventListener('click', this.ProcessInput.bind(this));										
-					}
-				}
 
-				break;
+			if(!this.server){
+				if(this.self){
+					document.getElementById('powerButton').removeEventListener('click', this.ProcessInput.bind(this));										
+				}
 			}
+
 			this.active = true;
 		}
 	}
@@ -107,11 +130,7 @@ class PowerUp{
 					}
 				}
 			}
-			switch(this.type){
-				case 6:
 
-				break;
-			}
 		}
 		else{	//taken
  			if(this.active){

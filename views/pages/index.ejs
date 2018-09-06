@@ -10,10 +10,10 @@
       padding: 0;
       height: 100%;
 
--webkit-user-select: none; /* Safari */        
+-webkit-user-select: none; /* Safari */
 -moz-user-select: none; /* Firefox */
 -ms-user-select: none; /* IE10+/Edge */
-user-select: none; /* Standard */      
+user-select: none; /* Standard */
     }
     .Button{
       border-radius: 50%;
@@ -43,7 +43,7 @@ user-select: none; /* Standard */
       background-color: inherit;
       position: relative;
       left: 50%;
-      transform: translateX(-50%) translateY(-50%);
+      transform: translateX(-50%);
     }
 
     .PanelButton:hover{
@@ -55,8 +55,9 @@ user-select: none; /* Standard */
     }
 
     #playButton{
+      top: 50%;
+      position: absolute;
       white-space: nowrap;
-      top: 49%;
     }
 
     #powerButton{
@@ -68,6 +69,7 @@ user-select: none; /* Standard */
     }
 
     #tileButton{
+      display: none;
       min-height: 50px;
       min-width: 50px;
       bottom: 10px;
@@ -97,6 +99,18 @@ user-select: none; /* Standard */
       background-color: rgba(255, 255, 255, 0.9);
     }
 
+
+    #rankingPanel{
+      border-radius: 10px;
+      font: 16px Helvetica, Arial; 
+      display: none;
+      top: 10px;
+      right: 10px;
+      position: absolute;
+      z-index:1000;
+      text-align: left;
+    }
+
     #infoPanel{
       position: relative;
       margin-top: 1%;
@@ -107,6 +121,7 @@ user-select: none; /* Standard */
     }
 
     #menuPanel{
+      position: absolute;
       display: inline-block;
       vertical-align:top;
       margin: auto;
@@ -147,12 +162,31 @@ user-select: none; /* Standard */
       padding: 0;
     }
 
+    #name{
+      top: 25%;
+      margin: 0;
+      padding: 0;
+      border: 1px solid #000;
+      width: 80%;
+      height: 15%;
+      background-color: inherit;
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+
+-webkit-user-select: auto; /* Safari */
+-moz-user-select: auto; /* Firefox */
+-ms-user-select: auto; /* IE10+/Edge */
+user-select: auto; /* Standard */      
+    }
+
     </style>
   </head>
 
   <body>
   	<!-- Libraries -->
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="jquery.validate.js"></script>
   	<script src="/socket.io/socket.io.js"></script>
   	<script src="//cdn.jsdelivr.net/phaser/2.6.0/phaser.min.js"></script>
     <script src="sscd.1.5.min.js"></script>
@@ -170,13 +204,16 @@ user-select: none; /* Standard */
 
     <div id= "powerButton" class="Button" ></div>
     <div id= "tileButton" class="Button" ></div>
+    <div id= "rankingPanel" class="Panel" ></div>
     <div id= "panelContainer">
       <div id= "infoPanel" class="Panel">
-        <span id="mainText">GAME.IO</span>
+        <span id="mainText">DRILLER.IO</span>
       </div>
-        <div id= "menuPanel" class="Panel">
-          <div id= "playButton" class= "PanelButton"><span id="playButtonText" class="ButtonText">Play!</span></div>
-        </div>
+      <div id= "menuPanel" class="Panel">
+        <input id="name" placeholder="Enter your name" autofocus></input>
+        <p id="validation"></p>
+        <div id= "playButton" class= "PanelButton"><span id="playButtonText" class="ButtonText">Play!</span></div>
+      </div>
     </div>
   </body>
 </html>

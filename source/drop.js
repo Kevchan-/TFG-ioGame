@@ -9,7 +9,7 @@ class Drop{
 		switch(this.type){
 			case 1://points
 			if(!this.server){
-				this.sprite = AddSprite("particle", pos);
+				this.sprite = AddSprite("heal", pos);
 			}
 
 			this.points = 1;

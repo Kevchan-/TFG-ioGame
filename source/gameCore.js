@@ -42,6 +42,7 @@ class GameCore{
 		this.localTime = new Date().getTime();
 		this.serverUpdates = [];	//clientside only
 		this.pWorld = new SSCD.World({grid_size: 16*5});
+		this.teamColors = {};
 
 
 		this.active = false;
@@ -203,6 +204,7 @@ class GameCore{
 				state.newTiles[tile.x+"x"+tile.y].x = tile.x;
 				state.newTiles[tile.x+"x"+tile.y].y = tile.y;
 				state.newTiles[tile.x+"x"+tile.y].type = tile.type;
+				state.newTiles[tile.x+"x"+tile.y].id = tile.id;
 			}
 		}
 
@@ -219,6 +221,16 @@ class GameCore{
 				state.powerUps[pUp.x+"x"+pUp.y].player = pUp.player;
 				state.powerUps[pUp.x+"x"+pUp.y].justTaken = pUp.justTaken;
 			}
+		}
+
+		if(typeof(this.playerSort) == "undefined" || this.playerSort == true){
+			if(typeof(this.playerSort) != "undefined"){
+				state.playerRanking = this.sortedPlayers;
+			}
+			setTimeout(
+				this.ServerSortPlayers.bind(this), 1000
+			);
+			this.playerSort = false;
 		}
 
 		for(var i = 0; i < this.map.pendingTakenPowerUps.length; i++){
@@ -245,6 +257,8 @@ class GameCore{
 			  this.map.pendingDrops.splice(0, 1);
 	    }	    
 
+
+
 		state.serverTime = serverTime;
 		state.serverDeltaTime = this.localDeltaTime;
 		this.lastState = state;
@@ -256,6 +270,36 @@ class GameCore{
 				this.players[playerid].socket.emit('onServerUpdate', serializedState);
 			}
 		}
+
+
+	}
+
+	ServerSortPlayers(){
+		var playerData = [];
+
+		for(var i in this.players){
+			if(this.players.hasOwnProperty(i)){
+				playerData.push({name: this.players[i].name, id: this.players[i].id, points: this.players[i].points, color: this.players[i].teamColor});
+			}
+		}
+
+
+		playerData.sort(function(a, b){
+			var keyA = a.points;
+			var keyB = b.points;
+
+			if(keyA>keyB){
+				return(-1);
+			}
+			if(keyA<keyB){
+				return(1);
+			}
+			return(0);
+		});
+
+
+		this.playerSort = true;
+		this.sortedPlayers = playerData;
 	}
 
 	GenerateDrop(tilePos, type){
@@ -365,11 +409,7 @@ class GameCore{
 				this.selfPlayer.KillPlayer(state[this.selfPlayer.id].lastPersonWhoHit);
 			}
 
-			if(this.selfPlayer.powerUp){
-				if(!this.selfPlayer.powerUp.active && state[this.selfPlayer.id].usePowerUp){
-					this.selfPlayer.powerUp.Use();
-				}
-			}
+
 
 			for(var playerid in this.players){
 				if(this.players.hasOwnProperty(playerid) && typeof(state[playerid]) != "undefined"){
@@ -412,40 +452,6 @@ class GameCore{
 				}
 			}
 
-			var serverChangedTiles = state.tilesState;
-
-			if(serverChangedTiles){
-				//console.log(serverChangedTiles);
-			}
-
-			for(var tile in serverChangedTiles){
-				if(serverChangedTiles.hasOwnProperty(tile)){
-					var rTile = serverChangedTiles[tile];
-					if(rTile.hp <= 0){
-						var type = rTile.drop;
-						var dropPos = {x: rTile.x, y: rTile.y};
-						if(rTile.justDied){
-							if(this.map.RemoveTile(rTile.x, rTile.y)){
-								this.map.AddDrop(this, dropPos, type);
-							}
-						}
-					}
-
-					if(rTile.attacker)
-					if(rTile.attacker !== this.selfPlayer.id){
-						if(rTile.hp <= 0 && rTile.justDied || rTile.hp > 0){
-							if(emitterTiles == null){
-								CreateEmitter(2);
-							}
-//							console.log("hp "+rTile.hp);
-							setTimeout(
-								ParticleBurst.bind(this, 2, {x: rTile.x, y: rTile.y}, 5), 100
-							);
-						}
-					}
-					
-				}
-			}
 
 			var serverAddedTiles = state.newTiles;
 
@@ -453,7 +459,8 @@ class GameCore{
 				if(serverAddedTiles.hasOwnProperty(tile)){
 					var newTile = serverAddedTiles[tile];
 //					console.log("put tile");
-					this.map.PutTile(newTile.x, newTile.y, newTile.type);
+
+					this.map.PutTile(newTile.x, newTile.y, newTile.type, newTile.id);
 				}
 			}
 
@@ -512,6 +519,52 @@ class GameCore{
 		var lastState = this.serverUpdates[this.serverUpdates.length-1];
 //		console.log(lastState[this.selfPlayer.id].pos.x+", "+lastState[this.selfPlayer.id].pos.y);
 
+		var serverChangedTiles = lastState.tilesState;
+
+		if(serverChangedTiles){
+			//console.log(serverChangedTiles);
+		}
+
+		for(var tile in serverChangedTiles){
+			if(serverChangedTiles.hasOwnProperty(tile)){
+				var rTile = serverChangedTiles[tile];
+				if(rTile.hp <= 0){
+					var type = rTile.drop;
+					var dropPos = {x: rTile.x, y: rTile.y};
+					if(rTile.justDied){
+						if(this.map.RemoveTile(rTile.x, rTile.y, rTile.attacker, false)){
+							this.map.AddDrop(this, dropPos, type);
+						}
+					}
+				}
+
+				if(rTile.attacker){
+					if(rTile.attacker !== this.selfPlayer.id){
+						if(rTile.hp <= 0 && rTile.justDied || rTile.hp > 0){
+							if(emitterTiles == null){
+								CreateEmitter(2);
+							}
+							setTimeout(
+								ParticleBurst.bind(this, 2, {x: rTile.x, y: rTile.y}, 5), 100
+							);
+						}
+					}
+				}
+			}
+		}
+
+		if(this.selfPlayer.powerUp){
+			if(!this.selfPlayer.powerUp.active && state[this.selfPlayer.id].usePowerUp){
+				this.selfPlayer.powerUp.Use();
+			}
+		}
+		
+		var ranking = lastState.playerRanking;
+		if(typeof(ranking) != "undefined"){
+
+			this.ClientUpdateRanking(ranking);
+		}		
+
 		this.selfPlayer.ClientServerReconciliation(lastState);
 		
 		if(this.entityInterpolation){
@@ -529,6 +582,43 @@ class GameCore{
 		}
 	}
 
+	ClientUpdateRanking(ranking){
+		var first10 = [];
+		var selfData = null;
+
+		var max = ranking.length;
+
+		if(max > 10){
+			max = 10;
+		}
+		console.log(max);
+
+		var i = 0;
+		while(selfData == null || i < max){
+			if(ranking[i].id = this.selfPlayer.id){
+				selfData = ranking[i];
+			}
+			first10.push(ranking[i]);
+			first10[i].rank = i+1;
+			i++;
+		}
+		var html = "";
+		var isSelfIn = false;
+		for(var i= 0; i< first10.length; i++){
+			if(first10[i].id == selfData.id){
+				isSelfIn = true;
+			}
+			html+= "<p>"+first10[i].rank+" "+first10[i].name+" "+first10[i].points+"</p>"
+		}
+
+		if(!isSelfIn){
+			html+= "<p>"+selfData.rank+" "+selfData.name+" "+selfData.points+"</p>"
+		}
+
+		$("#rankingPanel").html(html);
+		console.log("ranking:"+first10[0].points);
+	}
+
 	ClientPlayerStart(clientId){
 		if(this.selfPlayer.id == clientId){
 			this.selfPlayer.SetUpParameters(this.selfPlayer.pos, clientId);
@@ -538,15 +628,17 @@ class GameCore{
 		}
 	}
 
-	ClientAddPlayer(clientId){
+	ClientAddPlayer(clientId, teamColor){
 		if(this.playerCount == 0){
 			this.selfPlayer = new Player(this, null, true);
+			this.selfPlayer.teamColor = teamColor;
 			this.selfPlayer.SetUpParameters(this.selfPlayer.pos, clientId);
 			this.selfInstance = true;
 //			console.log("Your player was created. You are: "+clientId);
 		}
 		else{
 			this.players[clientId] = new Player(this, null, false);
+			this.players[clientId].teamColor = teamColor;
 			this.players[clientId].SetUpParameters(this.players[clientId].pos, clientId);
 //			console.log("Player "+clientId+" created");
 
@@ -562,9 +654,12 @@ class GameCore{
 		var parsedData = JSON.parse(data);
 		this.active = true;
 		var tilemap = parsedData.tileMap;
-//		console.log(tilemap);
-		this.map = new Map(this, tilemap);
+		console.log(parsedData);
+		this.map = new Map(this, tilemap, false, parsedData.teamColors);
 		this.selfPlayer.pos = parsedData[this.selfPlayer.id];
+//		this.selfPlayer.teamColor = parsedData[this.selfPlayer.id].teamColor;
+//		console.log(parsedData[this.selfPlayer.id].teamColor);
+//		this.selfPlayer = parsedData[this.selfPlayer.]
 
 //		console.log(this.destination.x+", "+this.destination.y);
 		this.selfPlayer.CreateSprite();
@@ -573,6 +668,7 @@ class GameCore{
 			if(this.players.hasOwnProperty(playerId)){
 //				console.log(playersPositions[playerId]);
 				this.players[playerId].pos = parsedData[playerId];
+//				this.players[playerId].teamColor = parsedData[playerId].teamColor;
 				this.players[playerId].CreateSprite();
 			}
 		}
@@ -616,9 +712,11 @@ class GameCore{
 	}
 
 	ClientOnJoin(data){
-		var ids = data.split(',');
+		var parsedData = JSON.parse(data);
+		console.log(parsedData);
+		var ids = parsedData.ids.split(',');
 		for(var i = 0; i < ids.length; i++){
-			this.ClientAddPlayer(ids[i]);
+			this.ClientAddPlayer(ids[i], parsedData.teamColors[i]);
 		}
 	}
 
@@ -627,9 +725,12 @@ class GameCore{
 		this.playerCount--;
 		this.players[id].RemoveSprite();
 		delete this.players[id];
+		this.map.PlayerLeft(id);
 //		console.log("Player "+id+" left");
 	}
 
+	ServerOnLeft(data){
+	}
 
 	ClientOnHost(data){
 //		console.log("You're the host");
@@ -637,16 +738,37 @@ class GameCore{
 	}
 
 	ClientOnConnected(data){
-		document.getElementById("playButton").addEventListener('click', function(){
-			console.log("pulsado");
-			this.socket.send('b.s.');
-		}.bind(this));
+		$("#playButton").click(this.SendPlayRequest.bind(this, true));
 		console.log("You connected");
 //		this.selfPlayer.state = ''
 //		this.selfPlayer.state = 'connected';
 //		this.selfPlayer.online = true;
 	}
 
+	SendPlayRequest(start){
+		var name = $("#name").val();
+
+		if(this.ValidateName(name)){
+			console.log(name, start);
+			$("#playButton").unbind( "click" );
+			$("#name").val("");
+			if(start){
+				this.socket.send('b.s.'+name);
+			}
+			else{
+				this.socket.send('b.r.'+name);
+			}
+		}
+		else{
+		}
+	}
+
+
+	ValidateName(name){
+		var valid = true;
+
+		return(valid);
+	}
 }
 
 

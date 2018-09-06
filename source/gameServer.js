@@ -21,11 +21,17 @@ class GameServer{	//receive and handle messages from the client
 				this.OnInputReceived(socket, data);
 				break;
 			case 'b':
-				this.OnButtonPushed(socket, data);
+				this.OnButtonPushed(socket, message);
 				break;
+			case 't':
+				this.OnTileNotif(socket, data);
 			default:
 				break;
 		}
+	}
+
+	OnTileNotif(client, data){
+		
 	}
 
 
@@ -39,14 +45,20 @@ class GameServer{	//receive and handle messages from the client
 
 	OnButtonPushed(client, data){
 		var messageParts = data.split('.');
-		var type = messageParts[0];
+		var type = messageParts[1];
 		if(type=="s"){
+			var name = messageParts[2];
+			client.name = name;
 			this.room.GameStartRequest(client);
 		}
 		else if(type=="r"){
+			var name = messageParts[2];
+			client.name = name;
 			client.room.game.ServerRevivePlayer(client.userid);
 		}
 		else{
+			var messageType = messageParts[0];
+			var data = messageParts[1];
 			var game = client.room.game;
 			game.ServerHandleButtonInput(client, data);
 		}

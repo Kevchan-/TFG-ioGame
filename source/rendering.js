@@ -19,18 +19,15 @@ var controlKey;
 
 var touchCords;
 
-//sprite object
-Sprite = function(index, name){
-    this.index = index;
-    this.name = name;
-}
 
-//sprite functions
 function Preload () {
     game.load.image('red', "red.png");
     game.load.image('blue', "blue.png");
     game.load.image('particle', "assets/particle.png");
+    game.load.image('heal', "assets/heal.png");
     game.load.image('bomb', "assets/bomb.png");
+    game.load.image('player', "assets/player.png");
+    game.load.image('playerBorder', "assets/playerBorder.png");
     game.load.image('powerUp', "assets/powerUp.png");
     game.load.image('sea', "assets/3.png");
     game.load.spritesheet('spritesheet', 'assets/spritesheet.png', 16, 16, 4);
@@ -44,7 +41,7 @@ function Preload () {
 function Create () {
 
     spriteBatch = game.add.spriteBatch();
-    game.stage.backgroundColor = "#2d2d2d";
+    game.stage.backgroundColor = "#45311D";
     game.stage.smoothed = false;
 
     upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
@@ -52,7 +49,6 @@ function Create () {
     leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
     rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
     spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACE);
-    backKey = game.input.keyboard.addKey(Phaser.Keyboard.BACKSPACE);
     controlKey = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
     shiftKey = game.input.keyboard.addKey(Phaser.Keyboard.SHIFT);
     
@@ -141,14 +137,30 @@ function ParticlesBurst(which, posVec, particles, time){
     }
 }
 
+function createSillhouette(srcKey) {
+    var bmd = game.make.bitmapData();
+    // load our texture into the bitmap
+    bmd.load(srcKey);
+    bmd.processPixelRGB(forEachPixel, this);
+  return bmd;
+}
+
+function forEachPixel(pixel) {      
+  // processPixelRGB won't take an argument, so we've set our sillhouetteColor globally 
+    pixel.r = 255;
+    pixel.g = 255;
+    pixel.b = 255;
+    return pixel;
+}
+
 function DestroyEmitters(){
     emitterTiles.destroy();
     emitter.destroy();
 }
 
 function SetSpritePosition(sprite, pos){
-    sprite.x = Math.round(pos.x*tileSize);
-    sprite.y = Math.round(pos.y*tileSize);
+    sprite.x = Math.round((pos.x)*tileSize+tileSize/2);
+    sprite.y = Math.round((pos.y)*tileSize+tileSize/2);
 }
 
 function SetCameraPosition(pos){
@@ -161,23 +173,19 @@ function GetSpritePosition(sprite){
     pos.y = sprite.y;
     return(pos);
 }
-function ColorImage(game, source, color) {   
-    var color = Phaser.Color.hexToColor(color);
-    return game.make.image(0, 0, game.add.bitmapData(source.width, source.height).fill(color.r, color.g, color.b).blendDestinationAtop().draw(source, 0, 0, source.width, source.height));
-}
 
 function AddSprite(name, cords, index){
     if(typeof(index) == 'undefined')
     {
-        var sprite = game.add.sprite(cords.x*tileSize, cords.y*tileSize, name); 
+        var sprite = game.add.sprite(cords.x*tileSize+tileSize/2, cords.y*tileSize+tileSize/2, name); 
     }
     else
     {
-        var sprite = game.make.sprite(cords.x*tileSize, cords.y*tileSize, name, index);
+        var sprite = game.make.sprite(cords.x*tileSize+tileSize/2, cords.y*tileSize+tileSize/2, name, index);
         spriteBatch.addChild(sprite);
 //        console.log("adding sprites");
     }
-//  sprite.anchor.setTo(0.5, 0.5);
+    sprite.anchor.setTo(0.5, 0.5);
     sprite.index = objects.length;
     objects.push(sprite);
     return(sprite);
@@ -219,6 +227,7 @@ function Flickering(sprite, tone, duration, interval, on){
 
 function SetCameraTarget(sprite){
     game.camera.follow(sprite);
+    console.log("camera following sprite");
 }
 
 function DeleteSprite(sprite){

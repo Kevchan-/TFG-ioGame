@@ -12,6 +12,7 @@
     "node-uuid": "^1.4.8",
     "phaser-ce": "^2.10.3",
     "proc-noise": "0.0.1",
+    "randomcolor": "^0.5.3",
     "socket.io": "^2.0.4",
     "sscd": "^1.5.1"
   }
