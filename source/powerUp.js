@@ -2,7 +2,6 @@ class PowerUp{
 	constructor(game, pos, type, server  ){
 		this.pos = pos;
 		this.id = pos.x+"x"+pos.y;
-		this.type = 10;
 		this.ending = false;
 		this.ended = false;
 		this.game = game;
@@ -10,18 +9,21 @@ class PowerUp{
 		this.active = false;
 		this.player = null;
 		this.taken = false;
-		switch(type){
+		this.type = type;
+		switch(this.type){
 			case 8:
 			console.log("Unstopable");
 			break;
 
 			case 9:
 			console.log("Super trail");
+			this.type = 8;
 			break;
 
 			case 10:
 			console.log("Endurance");
-			break;			
+			this.type = 11;
+			break;
 
 			case 11:
 			console.log("Strong trail");
@@ -57,7 +59,7 @@ class PowerUp{
 			this.taken = true;
 			switch(this.type){
 				case 8:
-				this.timer = 9;	//reset timer, now its used for when player activates the powerup
+				this.timer = 7;	//reset timer, now its used for when player activates the powerup
 				break;
 
 				case 9:
@@ -65,12 +67,12 @@ class PowerUp{
 				break;
 
 				case 10:
-				this.timer = 10;
+				this.timer = 14;
 				break;
 
 
 				case 11:
-				this.timer = 12;
+				this.timer = 14;
 				break;
 			}
 

@@ -271,9 +271,21 @@ class Map{
 			this.AddThreat(game, pos, type);
 		}
 		else if(type >= 16 && type <= 20){
-			this.AddPowerUp(game, pos, 8);
+			var powerType = 8;
+
+			if(type == 17){
+				powerType = 9;
+			}
+			else if(type == 18){
+				powerType = 10;
+			}
+			else if(type == 19){
+				powerType = 11;
+			}
+
+			this.AddPowerUp(game, pos, powerType);
 		}
-		else if(type > 20 & type < 23){
+		else if(type >= 20 && type < 23){
 			var tile = {};
 			tile.x = Math.trunc(pos.x);
 			tile.y = Math.trunc(pos.y);
