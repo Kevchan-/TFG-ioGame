@@ -174,11 +174,9 @@ class Player{
 		if(this.server){
 			if(this.usingTileTrail){
 				this.usingTileTrail = false;
-//				console.log(this.usingTileTrail);
 			}
 			else{
 				this.usingTileTrail = true;
-//				console.log(this.usingTileTrail);
 			}
 		}
 		else{
@@ -198,6 +196,12 @@ class Player{
 		input.sequenceNumber = data.sequenceNumber;
 		this.inputs.push(input);
 	}
+
+	ClientServerReconciliation2(netUpdate){
+		
+
+	}
+
 
 	//process messages from server reggarding our position. do server reconciliation
 	ClientServerReconciliation(netUpdate){
@@ -889,9 +893,7 @@ class Player{
 			direction.y = 0;
 		}
 
-		if(!this.server){
-			this.RotateSprite(direction);
-		}
+
 
 		var simulatedPos = this.pos;
 		var playerCollision = false;
@@ -945,6 +947,10 @@ class Player{
 		if(!this.reached){
 			this.pos.x = simulatedPos.x;
 			this.pos.y = simulatedPos.y;
+
+			if(!this.server){
+				this.RotateSprite(direction);
+			}			
 		}else{
 	//		console.log("reached objective");
 			this.pos.x = tilePos.x;
@@ -968,7 +974,16 @@ class Player{
 		if(!this.isSelf){
 			direction.x = pos.x - this.pos.x;
 			direction.y = pos.y - this.pos.y;			
+			direction.x = direction.x.toFixed(2);
+			direction.y = direction.y.toFixed(2);
 
+
+			if(direction.y != 0){
+				console.log("moving vertically: "+direction.y);
+			}
+			if(direction.x != 0){
+				console.log("moving horizontally: "+direction.x);
+			}
 
 			if(direction.x > 0){
 				direction.x = 1;
@@ -979,6 +994,7 @@ class Player{
 			else{
 				direction.x = 0;
 			}
+
 			if(direction.y > 0){
 				direction.y = 1;
 			}
@@ -988,6 +1004,7 @@ class Player{
 			else{
 				direction.y = 0;
 			}
+
 
 			if(!this.server){
 				this.RotateSprite(direction);
@@ -1040,7 +1057,6 @@ class Player{
 	}
 
 	RotateSprite(vector){
-		console.log("rotate: "+vector.x);
 		if(vector.x == -1){
 			this.sprite.angle = 270;
 			this.border.angle = 270;

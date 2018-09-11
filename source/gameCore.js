@@ -616,7 +616,6 @@ class GameCore{
 		}
 
 		$("#rankingPanel").html(html);
-		console.log("ranking:"+first10[0].points);
 	}
 
 	ClientPlayerStart(clientId){
