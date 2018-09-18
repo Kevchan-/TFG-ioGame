@@ -5,6 +5,8 @@ if(typeof(global)!== 'undefined'){
 	var DropClass = require('./drop.js');
 	var ThreatClass = require('./threat.js');
 	var PowerUpClass = require('./powerUp.js');
+var seedrandom = require('seedrandom');
+
 }
 
 class Map{
@@ -91,6 +93,7 @@ class Map{
 			}
 		}
 		else{
+			this.rng = seedrandom();
 			Perlin.noiseReseed();
 			this.noiseScale = 0.07;
 			this.isServer = true;
@@ -398,6 +401,7 @@ class Map{
 			tile.type = 2;
 		}
 		
+		tile.type = 3;
 //		tile.type = value;
 		if(tile.type == 0){
 			tile.hp = this.standardTileHp;
@@ -496,6 +500,7 @@ class Map{
 	}
 
 	RemoveTile(x, y, id, ghostRemove, conditional){
+
 		var deleted = false;
 		var tileType = this.tileMap[x][y].type;
 		if(this.isServer){
@@ -562,7 +567,7 @@ class Map{
 	}
 
 	GenerateDrop(){
-		var randomDrop = Math.round(Math.random()*this.dropRandom);
+		var randomDrop = Math.round(this.rng()*this.dropRandom);
 		return(randomDrop);
 	}
 

@@ -1,4 +1,4 @@
-var serverUpdatesPerSecond = 20;	//on server we update preferiby 20 times per second
+var serverUpdatesPerSecond = 30;	//on server we update preferiby 20 times per second
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser	
 	var PlayerObject = require('./player.js');
@@ -6,7 +6,7 @@ if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equ
 	var SSCD = require('sscd').sscd;
 }else{
 	var debugDrawing = true;
-	var clientUpdateFrequency = 30;	//on client run at 60fps
+	var clientUpdateFrequency = 60;	//on client run at 60fps
 
 	var width = 20*16;	//20 tiles on horizontal screen 
 	var height = 20*16;
@@ -60,7 +60,7 @@ class GameCore{
 			this.ClientConnectToServer();
 		}
 
-		this.entityInterpolation = true;
+		this.entityInterpolation = false;
 		this.clientSmoothing = 10;
 	}
 
@@ -140,6 +140,8 @@ class GameCore{
 				state[playerid].destination = this.players[playerid].destination;
 				state[playerid].moving = this.players[playerid].moving;
 				state[playerid].hitting = this.players[playerid].hitting;
+				state[playerid].coolingDown = this.players[playerid].coolingDown;
+				state[playerid].attackCoolDown = this.players[playerid].attackCoolDown;
 				state[playerid].lastTile = this.players[playerid].lastTile;
 				state[playerid].inputSequence = this.players[playerid].lastInputSequenceNumber;
 				state[playerid].usePowerUp = this.players[playerid].usingPowerUp;
@@ -317,7 +319,7 @@ class GameCore{
 
 	ClientUpdate(deltaTime){	
 		//process server messages
-		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime);
+		this.selfPlayer.ClientProcessInputs(this.socket, this.localTime, this.localDeltaTime);
 		this.selfPlayer.Update(this.localDeltaTime);
 		this.map.Update(this.localDeltaTime);
 		this.ClientProcessNetUpdates();
@@ -565,7 +567,7 @@ class GameCore{
 			this.ClientUpdateRanking(ranking);
 		}		
 
-		this.selfPlayer.ClientServerReconciliation(lastState);
+//		this.selfPlayer.ClientServerReconciliation2(lastState);
 		
 		if(this.entityInterpolation){
 			for(var playerid in this.players){
@@ -591,7 +593,6 @@ class GameCore{
 		if(max > 10){
 			max = 10;
 		}
-		console.log(max);
 
 		var i = 0;
 		while(selfData == null || i < max){

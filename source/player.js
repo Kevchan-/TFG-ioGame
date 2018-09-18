@@ -58,7 +58,7 @@ class Player{
 		this.powerUpButtonDown = false;	//clientside
 		this.usingPowerUp = false;		//serverside
 		this.tileTrailButtonDown = false;	//clientside
-		this.usingTileTrail = true;		//serverside
+		this.usingTileTrail = false;		//serverside
 
 		this.pos = {
 			x: 0,
@@ -198,7 +198,44 @@ class Player{
 	}
 
 	ClientServerReconciliation2(netUpdate){
-		
+
+
+		var make = true;
+
+		if(make){
+			var latestUpdate = netUpdate;
+			var myServerPos = latestUpdate[this.id].pos;
+			var serverSequence = latestUpdate[this.id].inputSequence;
+			var serverTime = latestUpdate.serverTime;
+			var deltaTime = this.game.localTime - serverTime;
+
+			this.moving = latestUpdate[this.id].moving;
+			this.destination = latestUpdate[this.id].destination;
+			this.coolingDown = latestUpdate[this.id].coolingDown;
+			this.lastTile = latestUpdate[this.id].lastTile;
+			this.hitting = latestUpdate[this.id].hitting;
+			this.coolingDown = latestUpdate[this.id].coolingDown;
+			this.attackCoolDown = latestUpdate[this.id].attackCoolDown;
+
+			var auxPos = this.pos;
+			this.SetPosition(myServerPos);			
+
+
+			var i = 0;
+			while(i < this.pendingInputs.length){
+				if(this.pendingInputs[i].sequenceNumber >= serverSequence){							
+					var input = this.pendingInputs[i];
+					this.ApplyInput(input);		
+
+					this.UpdatePhysics(deltaTime);
+					i++;
+				}					
+				else{
+					this.pendingInputs.splice(i, 1);
+				}
+			}
+				
+		}
 
 	}
 
@@ -291,10 +328,11 @@ class Player{
 			}
 	}
 
-	ClientProcessInputs(socket, time){	//we check the current inputs to store them for later reconciliation and send them to the server right now
+	ClientProcessInputs(socket, time, localDeltaTime){	//we check the current inputs to store them for later reconciliation and send them to the server right now
 		//if we have cliendside prediction enabled we'll apply the input as we check the inputs right here
 		var now = new Date().getTime()/1000.0;
-		var deltaTime = now - this.lastUpdateTime || now; //if lastupdatetime doesn't exist yet just use the current date
+//		var deltaTime = now - this.lastUpdateTime || now; //if lastupdatetime doesn't exist yet just use the current date
+		var deltaTime = localDeltaTime;
 		this.lastUpdateTime = now;
 
 		var input = {};
@@ -354,14 +392,20 @@ class Player{
 
 			input.id = this.id;
 			input.timeStamp = time.toString().replace(".", ",");
-			input.pos = this.pos;
 			input.destination = this.destination;
 
 			var serialized = JSON.stringify(input);
 			serialized = "i."+serialized;
 			this.game.socket.send(serialized);
+
+
+			input.pos = this.pos;
+			input.timeStamp = time;
+			input.deltaTime = deltaTime;
 			this.pendingInputs.push(input);
 		}
+
+
 		if(this.powerUpButtonDown){
 			var serialized = JSON.stringify(this.powerUpButtonDown);
 			this.game.socket.send("b.p."+serialized);
@@ -539,6 +583,7 @@ class Player{
 
 		return(newDestination);
 	}
+
 
 	Update(deltaTime){
 		if(!this.dead){
@@ -1042,7 +1087,7 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 			this.sprite = AddSprite('player', cords);
 			this.sprite.visible = true;
-			this.serverSprite.visible = false;
+			this.serverSprite.visible = true;
 			this.sprite.anchor.setTo(0.5);
 			this.serverSprite.anchor.setTo(0.5);
 			SetCameraTarget(this.sprite);
@@ -1054,6 +1099,7 @@ class Player{
 		}
 			this.sprite.angle = 0;
 			this.border.angle = 0;
+			this.border.visible = false;
 	}
 
 	RotateSprite(vector){
