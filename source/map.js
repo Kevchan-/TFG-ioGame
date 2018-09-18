@@ -401,7 +401,6 @@ class Map{
 			tile.type = 2;
 		}
 		
-		tile.type = 3;
 //		tile.type = value;
 		if(tile.type == 0){
 			tile.hp = this.standardTileHp;
