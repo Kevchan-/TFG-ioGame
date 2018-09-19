@@ -221,7 +221,7 @@ class Player{
 			this.SetPosition(myServerPos);			
 
 
-			var i = 0;
+			var i = 0;/*
 			while(i < this.pendingInputs.length){
 				if(this.pendingInputs[i].sequenceNumber >= serverSequence){							
 					var input = this.pendingInputs[i];
@@ -233,7 +233,7 @@ class Player{
 				else{
 					this.pendingInputs.splice(i, 1);
 				}
-			}
+			}*/
 				
 		}
 
@@ -1087,7 +1087,7 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 			this.sprite = AddSprite('player', cords);
 			this.sprite.visible = true;
-			this.serverSprite.visible = true;
+			this.serverSprite.visible = false;
 			this.sprite.anchor.setTo(0.5);
 			this.serverSprite.anchor.setTo(0.5);
 			SetCameraTarget(this.sprite);
@@ -1099,7 +1099,6 @@ class Player{
 		}
 			this.sprite.angle = 0;
 			this.border.angle = 0;
-			this.border.visible = false;
 	}
 
 	RotateSprite(vector){
