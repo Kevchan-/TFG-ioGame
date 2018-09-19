@@ -1087,7 +1087,7 @@ class Player{
 			this.serverSprite = AddSprite('blue', cords);
 			this.sprite = AddSprite('player', cords);
 			this.sprite.visible = true;
-			this.serverSprite.visible = false;
+			this.serverSprite.visible = true;
 			this.sprite.anchor.setTo(0.5);
 			this.serverSprite.anchor.setTo(0.5);
 			SetCameraTarget(this.sprite);

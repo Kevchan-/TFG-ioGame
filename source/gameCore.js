@@ -1,4 +1,4 @@
-var serverUpdatesPerSecond = 15;	//on server we update preferiby 20 times per second
+var serverUpdatesPerSecond = 10;	//on server we update preferiby 20 times per second
 
 if(typeof(global) !== 'undefined'){	//if global doesn't exist (it's "window" equivalent for node) then we're on browser	
 	var PlayerObject = require('./player.js');
