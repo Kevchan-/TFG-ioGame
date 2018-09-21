@@ -199,44 +199,95 @@ class Player{
 
 	ClientServerReconciliation2(netUpdate){
 
-
 		var make = true;
+		var buffer = this.positionBuffer;
 
-		if(make){
-			var latestUpdate = netUpdate;
-			var myServerPos = latestUpdate[this.id].pos;
-			var serverSequence = latestUpdate[this.id].inputSequence;
-			var serverTime = latestUpdate.serverTime;
-			var deltaTime = this.game.localTime - serverTime;
-
-			this.moving = latestUpdate[this.id].moving;
-			this.destination = latestUpdate[this.id].destination;
-			this.coolingDown = latestUpdate[this.id].coolingDown;
-			this.lastTile = latestUpdate[this.id].lastTile;
-			this.hitting = latestUpdate[this.id].hitting;
-			this.coolingDown = latestUpdate[this.id].coolingDown;
-			this.attackCoolDown = latestUpdate[this.id].attackCoolDown;
-
-			var auxPos = this.pos;
-			this.SetPosition(myServerPos);			
-
-
-			var i = 0;/*
-			while(i < this.pendingInputs.length){
-				if(this.pendingInputs[i].sequenceNumber >= serverSequence){							
-					var input = this.pendingInputs[i];
-					this.ApplyInput(input);		
-
-					this.UpdatePhysics(deltaTime);
-					i++;
-				}					
-				else{
-					this.pendingInputs.splice(i, 1);
-				}
-			}*/
-				
+		if(buffer.length < 2){
+			make = false;
 		}
 
+		if(make){
+
+			var latestUpdate = netUpdate;
+			var serverSequence = latestUpdate[this.id].inputSequence;
+			var serverTime = latestUpdate.serverTime;
+			var serverPos = latestUpdate[this.id].pos;
+
+
+			var target;
+			var previous;
+			var deleteUntil = 0;
+
+			console.log("ServerTime: "+serverTime);
+			console.log("BufferPosTimes: "+buffer[buffer.length-1].timeStamp);
+			for(var i = 0; i < buffer.length-1; i++){
+//				console.log("BufferPosTimes: "+buffer[i].timeStamp+", "+buffer[i+1].timeStamp);
+				if(serverTime > buffer[i].timeStamp && serverTime <= buffer[i+1].timeStamp){
+					target = buffer[i+1];
+					previous = buffer[i];
+					deleteUntil = i;
+					break;
+				}
+			}
+			console.log("delete"+deleteUntil);
+
+			if(target && previous){
+
+				this.moving = latestUpdate[this.id].moving;
+				this.destination = latestUpdate[this.id].destination;
+				this.coolingDown = latestUpdate[this.id].coolingDown;
+				this.lastTile = latestUpdate[this.id].lastTile;
+				this.hitting = latestUpdate[this.id].hitting;
+				this.coolingDown = latestUpdate[this.id].coolingDown;
+				this.attackCoolDown = latestUpdate[this.id].attackCoolDown;
+
+				var pos = this.Interpolation(previous, target, serverTime);
+				var auxPos = {x: this.pos.x, y: this.pos.y};
+				console.log("AuxPos: "+this.pos.x+", "+this.pos.y);
+
+
+				if(true){
+//					console.log("Correcting");
+					this.SetPosition(serverPos);
+
+					var i = 0;
+
+					while(i < this.pendingInputs.length){
+						if(this.pendingInputs[i].sequenceNumber > serverSequence){							
+							var input = this.pendingInputs[i];
+
+							this.ApplyInput(input);	
+
+							for(var j = 0; j < this.positionBuffer.length; j++){
+								if(buffer[j].inputSequence == input.sequenceNumber){
+									this.UpdatePhysics(buffer[i].deltaTime, true);
+								}
+							}
+
+							i++;
+						}					
+						else{
+							this.pendingInputs.splice(i, 1);
+						}
+					}
+					console.log("FinPos: "+this.pos.x+", "+this.pos.y);					
+				}
+			}
+
+			this.positionBuffer.splice(0, deleteUntil);			
+		}
+	}
+
+	Interpolation(previous, target, timeStamp){
+		var difference = target.timeStamp - timeStamp;
+		var maxDifference = target.timeStamp - previous.timeStamp;
+		var timePoint = difference/maxDifference;
+
+		var pos = {x: this.pos.x, y:this.pos.y};
+
+		pos.x = Phaser.Math.linear(previous.pos.x, target.pos.x, timePoint);
+		pos.y = Phaser.Math.linear(previous.pos.y, target.pos.y, timePoint);		
+		return(pos);
 	}
 
 
@@ -615,7 +666,7 @@ class Player{
 		}
 	}
 
-	UpdatePhysics(deltaTime){
+	UpdatePhysics(deltaTime, recon){
 
 //		console.log(this.id);
 //		console.log(this.game.pWorld.pick_object(rect));
@@ -637,12 +688,15 @@ class Player{
 		}
 
 		if(this.moving){
-			this.MoveToTile(this.destination, deltaTime);
+			this.MoveToTile(this.destination, deltaTime, recon);
+
 			//store the deltaTimes for server reconciliation
 			if(this.server){
 //				console.log("Physics update: "+this.pos.x+", "+this.pos.y);
 			}
 			else if(!this.server){
+
+
 			//	if(!this.pendingIterationDeltaTimes[this.lastInputSequenceNumber]){
 //					this.pendingIterationDeltaTimes[this.lastInputSequenceNumber] = [];
 //					this.pidtCounters[this.lastInputSequenceNumber] = 0;
@@ -683,7 +737,12 @@ class Player{
 			}
 		}
 
+		if(this.isSelf && !recon){
+			var now = new Date().getTime()/1000.0;
+			this.positionBuffer.push({pos: this.pos, timeStamp: now, deltaTime: deltaTime, inputSequence : (this.lastInputSequenceNumber-1)});
 
+//			console.log("pos:" +this.pos.x+", input seq: "+ (this.lastInputSequenceNumber-1));	
+		}		
 	}
 
 	CreateTile(pos){
@@ -911,7 +970,7 @@ class Player{
 		}
 	}
 
-	MoveToTile(tilePos, deltaTime){	//moves to adjacent tile
+	MoveToTile(tilePos, deltaTime, recon){	//moves to adjacent tile
 //		console.log("Destinat: "+this.destination.x+", "+this.destination.y);
 //		console.log("Position: "+this.pos.x+", "+this.pos.y);
 
@@ -1004,60 +1063,64 @@ class Player{
 //		console.log("Delta time: "+deltaTime);
 //		console.log("Position: "+this.pos.x+", "+this.pos.y);
 		if(!this.server){
-			this.SetPosition(this.pos);
+			this.SetPosition(this.pos, recon);
 		}
 		else{
 			if(this.pObject){
 				this.pObject.set_position(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize));
 			}
+
+//			console.log("pos:" +this.pos.x+", input seq: "+ (this.lastInputSequenceNumber));				
 		}
 	}
 
-	SetPosition(pos){
+	SetPosition(pos, recon){
 
 		var direction = {};
-		if(!this.isSelf){
-			direction.x = pos.x - this.pos.x;
-			direction.y = pos.y - this.pos.y;			
-			direction.x = direction.x.toFixed(2);
-			direction.y = direction.y.toFixed(2);
+		if(!this.server){
+			if(!this.isSelf){
+				direction.x = pos.x - this.pos.x;
+				direction.y = pos.y - this.pos.y;			
+				direction.x = direction.x.toFixed(2);
+				direction.y = direction.y.toFixed(2);
 
 
-			if(direction.y != 0){
-				console.log("moving vertically: "+direction.y);
-			}
-			if(direction.x != 0){
-				console.log("moving horizontally: "+direction.x);
-			}
+				if(direction.y != 0){
+					console.log("moving vertically: "+direction.y);
+				}
+				if(direction.x != 0){
+					console.log("moving horizontally: "+direction.x);
+				}
 
-			if(direction.x > 0){
-				direction.x = 1;
-			}
-			else if(direction.x < 0){
-				direction.x = -1;
-			}
-			else{
-				direction.x = 0;
-			}
+				if(direction.x > 0){
+					direction.x = 1;
+				}
+				else if(direction.x < 0){
+					direction.x = -1;
+				}
+				else{
+					direction.x = 0;
+				}
 
-			if(direction.y > 0){
-				direction.y = 1;
-			}
-			else if(direction.y < 0){
-				direction.y = -1;
-			}
-			else{
-				direction.y = 0;
-			}
-
-
-			if(!this.server){
+				if(direction.y > 0){
+					direction.y = 1;
+				}
+				else if(direction.y < 0){
+					direction.y = -1;
+				}
+				else{
+					direction.y = 0;
+				}
+			
 				this.RotateSprite(direction);
 			}
 		}
 
+
 		this.pos.x = pos.x;
 		this.pos.y = pos.y;	
+
+
 
 		if(this.pObject){
 			this.pObject.set_position(new SSCD.Vector(this.pos.x*tileSize, this.pos.y*tileSize));
@@ -1067,6 +1130,8 @@ class Player{
 			SetSpritePosition(this.sprite, pos);	//method on rendering
 			SetSpritePosition(this.border, pos);	//method on rendering
 //			this.game.pWorld.render(game.canvas);
+		}
+		else{		
 		}
 	}
 

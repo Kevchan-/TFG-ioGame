@@ -567,7 +567,7 @@ class GameCore{
 			this.ClientUpdateRanking(ranking);
 		}		
 
-//		this.selfPlayer.ClientServerReconciliation2(lastState);
+		this.selfPlayer.ClientServerReconciliation2(lastState);
 		
 		if(this.entityInterpolation){
 			for(var playerid in this.players){
