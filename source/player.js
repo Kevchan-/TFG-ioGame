@@ -219,9 +219,9 @@ class Player{
 			var target;
 			var previous;
 			var deleteUntil = 0;
-
+			console.log("ServerTime: "+serverTime);
 			for(var i = 0; i < buffer.length-1; i++){
-//				console.log("BufferPosTimes: "+buffer[i].timeStamp+", "+buffer[i+1].timeStamp);
+				console.log("BufferPosTimes: "+buffer[i].timeStamp+", "+buffer[i+1].timeStamp);
 				if(serverTime > buffer[i].timeStamp && serverTime <= buffer[i+1].timeStamp){
 					target = buffer[i+1];
 					previous = buffer[i];
@@ -656,7 +656,7 @@ class Player{
 				}
 			}
 			var reached = this.reached;
-			this.UpdatePhysics(deltaTime);
+			this.UpdatePhysics(deltaTime, false);
 
 			if(this.reached){
 				if(!reached){
@@ -749,7 +749,7 @@ class Player{
 			var now = new Date().getTime()/1000.0;
 			this.positionBuffer.push({pos: this.pos, timeStamp: now, deltaTime: deltaTime, inputSequence : (this.lastInputSequenceNumber-1)});
 
-//			console.log("pos:" +this.pos.x+", input seq: "+ (this.lastInputSequenceNumber-1));	
+			console.log("pos:" +this.pos.x+", "+this.pos.y+", time: "+ now);	
 		}		
 	}
 
