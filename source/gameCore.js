@@ -136,6 +136,7 @@ class GameCore{
 
 //				console.log("Health: "+state[playerid].healthPoints);
 				state[playerid].pos = this.players[playerid].pos;
+				console.log(state[playerid].pos);
 				state[playerid].dead = this.players[playerid].dead;
 				state[playerid].destination = this.players[playerid].destination;
 				state[playerid].moving = this.players[playerid].moving;

@@ -243,8 +243,10 @@ class Player{
 
 				var pos = this.Interpolation(previous, target, serverTime);
 				var auxPos = {x: this.pos.x, y: this.pos.y};
-				console.log("AuxPos: "+this.pos.x+", "+this.pos.y);
-
+				var auxPos = {x: this.pos.x, y: this.pos.y};
+				console.log("AuxPos: "+auxPos.x+", "+auxPos.y);
+       			console.log("SerPos: "+serverPos.x+", "+serverPos.y);
+				console.log("IntPos: "+pos.x+", "+pos.y);
 
 				if(true){
 //					console.log("Correcting");
@@ -285,6 +287,8 @@ class Player{
 
 		var pos = {x: this.pos.x, y:this.pos.y};
 
+   		console.log("TimePoint: "+ timePoint);
+        console.log("Pos x: "+ previous.pos.x+", "+target.pos.y);
 		pos.x = Phaser.Math.linear(previous.pos.x, target.pos.x, timePoint);
 		pos.y = Phaser.Math.linear(previous.pos.y, target.pos.y, timePoint);		
 		return(pos);
