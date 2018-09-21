@@ -216,11 +216,11 @@ class Player{
 			var serverPos = latestUpdate[this.id].pos;
 
 
-			var target;
-			var previous;
-			var deleteUntil = 0;
-			console.log("ServerTime: "+serverTime);
-			for(var i = 0; i < buffer.length-1; i++){
+//			var target;
+//			var previous;
+//			var deleteUntil = 0;
+//			console.log("ServerTime: "+serverTime);
+/*			for(var i = 0; i < buffer.length-1; i++){
 				console.log("BufferPosTimes: "+buffer[i].timeStamp+", "+buffer[i+1].timeStamp);
 				if(serverTime > buffer[i].timeStamp && serverTime <= buffer[i+1].timeStamp){
 					target = buffer[i+1];
@@ -228,12 +228,12 @@ class Player{
 					deleteUntil = i;
 					break;
 				}
-			}
+			}*/
 //			console.log("delete"+deleteUntil);
 
-			if(target && previous){
+			if(true){
 
-				var pos = this.Interpolation(previous, target, serverTime);
+				var pos = buffer[buffer.length-1].pos;
 				var auxPos = {x: this.pos.x, y: this.pos.y};
 //				console.log("AuxPos: "+auxPos.x+", "+auxPos.y);
   //     			console.log("SerPos: "+serverPos.x+", "+serverPos.y);
@@ -279,7 +279,7 @@ class Player{
 				}
 			}
 
-			this.positionBuffer.splice(0, deleteUntil);			
+			this.positionBuffer.splice(0, this.positionBuffer-1);			
 		}
 	}
 
