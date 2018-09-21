@@ -136,7 +136,6 @@ class GameCore{
 
 //				console.log("Health: "+state[playerid].healthPoints);
 				state[playerid].pos = this.players[playerid].pos;
-				console.log(state[playerid].pos);
 				state[playerid].dead = this.players[playerid].dead;
 				state[playerid].destination = this.players[playerid].destination;
 				state[playerid].moving = this.players[playerid].moving;
@@ -394,7 +393,12 @@ class GameCore{
 				this.selfPlayer.SetServerPosition(debugPos);
 			}
 
+
 			if(this.selfPlayer.healthPoints > state[this.selfPlayer.id].healthPoints){
+				var diff = this.selfPlayer.healthPoints - state[this.selfPlayer.id].healthPoints;
+				console.log(diff);
+							this.selfPlayer.RemoveLife(diff);
+
 			  if(emitter == null){
 				  CreateEmitter(1);
 		  	  }
@@ -406,6 +410,11 @@ class GameCore{
 			  game.camera.shake(0.005, 100);
 
 			}
+			else if(this.selfPlayer.healthPoints < state[this.selfPlayer.id].healthPoints){
+				var diff = state[this.selfPlayer.id].healthPoints - this.selfPlayer.healthPoints; 
+				this.selfPlayer.RecoverLife(diff);				
+			}
+
 			this.selfPlayer.healthPoints = state[this.selfPlayer.id].healthPoints;
 
 			if(this.selfPlayer.healthPoints <= 0 && !this.selfPlayer.dead){
@@ -418,6 +427,15 @@ class GameCore{
 				if(this.players.hasOwnProperty(playerid) && typeof(state[playerid]) != "undefined"){
 					if(typeof(state[playerid]) == "undefined"){
 //						console.log(state);
+					}
+					if(this.players[playerid].healthPoints > state[playerid].healthPoints){
+						var diff = this.players[playerid].healthPoints- state[playerid].healthPoints;
+						console.log(diff);
+							this.players[playerid].RemoveLife(diff);
+					}
+					else if(this.players[playerid].healthPoints < state[playerid].healthPoints){
+						var diff = state[playerid].healthPoints - this.players[playerid].healthPoints;
+						this.players[playerid].RecoverLife(diff);
 					}
 
 					if(this.players[playerid].healthPoints > state[playerid].healthPoints && state[playerid].lastPersonWhoHit != this.selfPlayer.id){
@@ -615,6 +633,10 @@ class GameCore{
 
 		if(!isSelfIn){
 			html+= "<p>"+selfData.rank+" "+selfData.name+" "+selfData.points+"</p>"
+		}
+
+		if(this.selfPlayer.name == ""){
+			this.selfPlayer.name = selfData.name;
 		}
 
 		$("#rankingPanel").html(html);

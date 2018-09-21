@@ -17,7 +17,6 @@ class PowerUp{
 
 			case 9:
 			console.log("Super trail");
-			this.type = 8;
 			break;
 
 			case 10:

@@ -46,14 +46,20 @@ class GameServer{	//receive and handle messages from the client
 	OnButtonPushed(client, data){
 		var messageParts = data.split('.');
 		var type = messageParts[1];
-		if(type=="s"){
+		if(type == "s"){
 			var name = messageParts[2];
+			if(name == ""){
+				name = "Player "+client.room.playerCount;
+			}
 			client.name = name;
 			this.room.GameStartRequest(client);
 		}
 		else if(type=="r"){
 			var name = messageParts[2];
 			client.name = name;
+			if(name == ""){
+				name = "Player "+client.room.playerCount;
+			}			
 			client.room.game.ServerRevivePlayer(client.userid);
 		}
 		else{

@@ -23,6 +23,7 @@ var touchCords;
 function Preload () {
     game.load.image('red', "red.png");
     game.load.image('blue', "blue.png");
+    game.load.image('life', "assets/life.png");
     game.load.image('particle', "assets/particle.png");
     game.load.image('heal', "assets/heal.png");
     game.load.image('bomb', "assets/bomb.png");

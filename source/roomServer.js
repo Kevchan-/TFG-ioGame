@@ -17,6 +17,15 @@ function hexToRgbA(hex, alpha){
     }
 }
 
+function shuffleArray(array) {
+    for (var i = array.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var temp = array[i];
+        array[i] = array[j];
+        array[j] = temp;
+    }
+}
+
 class GameRoom{
 	constructor(client){
 		this.roomid = uuid(); 			//room id
@@ -28,11 +37,15 @@ class GameRoom{
 		this.clientCount = 1;
 		this.active = false;
 		this.minPlayers = 1;		//player minimum to start the game
-		var colors = ["#FFFFFF","#bc4df0", "#412270", "#d3ffa3", "#1a7280", "#d0ff00", "#940065", "#516fe8", "#ffee00", "#8eb6e8",
+		var preColors = ["#bc4df0", "#412270", "#d3ffa3", "#1a7280", "#d0ff00", "#940065", "#516fe8", "#ffee00", "#8eb6e8",
 		"#a6f8ff", "#384525", "#c9cc29", "#ab4d55", "#59bfff","#000000","#98a65a","#6b5600", "#ffc44c", "#452525", "#5accbd", 
 		"#9c9100", "#703467", "#b37272", "#5aa61f", "#8e00c2", "#0c0075", "#ff8040", "#f3a3ff", "#7a4312", "#ff00d9", 
 		"#802626", "#e3a300", "#60e851", "#7091ba", "#b05720", "#597322", "#35525e", "#808080", "#ff99c9", "#520d3c",
 		"#2f48ad", "#875be8", "#604c7d", "#a18d62", "#4d539e", "#f2d491", "#f04d8b", "#8affc4", "#cc1414"];
+		shuffleArray(preColors);		
+		var colors = ["#FFFFFF"].concat(preColors);
+
+
 
 		this.teamColors = new Stack();
 		for(var i = 0; i < colors.length; i++){

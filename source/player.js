@@ -42,6 +42,7 @@ class Player{
 		this.lastProcessedInput = -1;				//for reconc., index of last processed input
 		this.positionBuffer = [];	
 
+		this.name = "";
 		this.teamColor;
 		this.maxHealthPoints = 5;
 		this.healthPoints = this.maxHealthPoints;
@@ -146,6 +147,7 @@ class Player{
 			if(this.sprite){
 				this.sprite.visible = true;
 				this.border.visible = true;	
+				this.MakeLives();
 				if(this.isSelf){
 					SetCameraTarget(this.sprite);				
 					this.SetPosition(this.pos);		
@@ -155,7 +157,7 @@ class Player{
 			if(this.isSelf){
 				document.getElementById('tileButton').addEventListener('click', this.HandleTileButton.bind(this));			
 				document.getElementById('panelContainer').style.display = "none";
-				document.getElementById('rankingPanel').style.display = "block";
+				document.getElementById('rankingPanel').style.display = "block";			
 			}
 		}
 		else{
@@ -218,8 +220,6 @@ class Player{
 			var previous;
 			var deleteUntil = 0;
 
-			console.log("ServerTime: "+serverTime);
-			console.log("BufferPosTimes: "+buffer[buffer.length-1].timeStamp);
 			for(var i = 0; i < buffer.length-1; i++){
 //				console.log("BufferPosTimes: "+buffer[i].timeStamp+", "+buffer[i+1].timeStamp);
 				if(serverTime > buffer[i].timeStamp && serverTime <= buffer[i+1].timeStamp){
@@ -229,20 +229,21 @@ class Player{
 					break;
 				}
 			}
-			console.log("delete"+deleteUntil);
+//			console.log("delete"+deleteUntil);
 
 			if(target && previous){
 
 				var pos = this.Interpolation(previous, target, serverTime);
 				var auxPos = {x: this.pos.x, y: this.pos.y};
-				console.log("AuxPos: "+auxPos.x+", "+auxPos.y);
-       			console.log("SerPos: "+serverPos.x+", "+serverPos.y);
-				console.log("IntPos: "+pos.x+", "+pos.y);
+//				console.log("AuxPos: "+auxPos.x+", "+auxPos.y);
+  //     			console.log("SerPos: "+serverPos.x+", "+serverPos.y);
+	//			console.log("IntPos: "+pos.x+", "+pos.y);
 
 				var xDif = Math.abs(pos.x - serverPos.x);
 				var yDif = Math.abs(pos.y - serverPos.y);
+					console.log("Difs: "+xDif+","+yDif);
 
-				if(xDif > 0.8 && yDif > 0.8){
+				if(xDif > 0.8 || yDif > 0.8){
 
 //					console.log("Correcting");
 					this.moving = latestUpdate[this.id].moving;
@@ -264,7 +265,7 @@ class Player{
 
 							for(var j = 0; j < this.positionBuffer.length; j++){
 								if(buffer[j].inputSequence == input.sequenceNumber){
-									this.UpdatePhysics(buffer[i].deltaTime, true);
+									this.UpdatePhysics(buffer[j].deltaTime, true);
 								}
 							}
 
@@ -274,7 +275,7 @@ class Player{
 							this.pendingInputs.splice(i, 1);
 						}
 					}
-					console.log("FinPos: "+this.pos.x+", "+this.pos.y);					
+//					console.log("FinPos: "+this.pos.x+", "+this.pos.y);					
 				}
 			}
 
@@ -289,8 +290,8 @@ class Player{
 
 		var newPos = {x: this.pos.x, y:this.pos.y};
 
-   		console.log("TimePoint: "+ timePoint);
-        console.log("Pos x: "+ previous.pos.x+", "+target.pos.y);
+//   		console.log("TimePoint: "+ timePoint);
+  //      console.log("Pos x: "+ previous.pos.x+", "+target.pos.y);
 		newPos.x = Phaser.Math.linear(previous.pos.x, target.pos.x, timePoint);
 		newPos.y = Phaser.Math.linear(previous.pos.y, target.pos.y, timePoint);		
 		return(newPos);
@@ -528,7 +529,8 @@ class Player{
 
 			if(drop){
 				this.game.map.RemoveDrop(drop);
-				//todo apply effects
+				
+				this.healthPoints = this.maxHealthPoints;
 			}			
 		}
 	}
@@ -761,12 +763,47 @@ class Player{
 			}
 		}
 
-		var tile = {x: pos.x, y: pos.y, type: type, hp: 1};
+		var tile = {x: pos.x, y: pos.y, type: type, hp: hp};
 
 
 		if(this.server){
 			this.game.map.ResetTile(tile, this.id);
 			this.points++;
+
+			if(this.usingPowerUp){
+				if(this.powerUp.type == 9 && this.powerUp.active){
+					var tile2 = {x: pos.x, y: pos.y, type: type, hp: hp};
+					var tile3 = {x: pos.x, y: pos.y, type: type, hp: hp};
+
+					if(this.direction == "right" || this.direction == "left"){
+						tile2.y = tile2.y+1;
+						tile3.y = tile3.y-1;
+
+						if(tile2.y >= 0 && tile2.y < this.game.map.height){
+							this.game.map.ResetTile(tile2, this.id);
+							this.points++;	
+						}
+
+						if(tile3.y >= 0 && tile3.y < this.game.map.height){
+							this.game.map.ResetTile(tile3, this.id);
+							this.points++;								
+						}					
+					}
+					else if(this.direction == "up" || this.direction == "down"){
+						tile2.x = tile2.x+1;
+						tile3.x = tile3.x-1;
+
+						if(tile2.x >= 0 && tile2.x < this.game.map.width){
+							this.game.map.ResetTile(tile2, this.id);
+							this.points++;	
+						}
+						if(tile3.x >= 0 && tile3.x < this.game.map.width){
+							this.game.map.ResetTile(tile3, this.id);
+							this.points++;								
+						}									
+					}					
+				}
+			}
 		}
 		else{
 			this.game.map.PutTile(tile.x, tile.y, tile.type, this.id);
@@ -832,7 +869,7 @@ class Player{
 		var damage = damage;
 		
 		if(this.usingPowerUp){
-			if(this.powerUp.type == 10){
+			if(this.powerUp.type == 10 && this.powerUp.active){
 				damage = 0;
 			}
 		}
@@ -883,7 +920,10 @@ class Player{
 
 	ShowGamePanel(){
 		$("#playButton").click(this.game.SendPlayRequest.bind(this.game, false));
-		$("#name").focus()
+		$("#name").focus();
+		$("#name").removeAttr('placeholder');
+		console.log(this.name);
+		$("#name").val(this.name);			
 		$("#mainText").text("YOU DIED!");
 		$("#playButtonText").text("Play again!");
 		$("#panelContainer").fadeIn("slow");
@@ -1038,22 +1078,27 @@ class Player{
 			if(Math.abs(simulatedPos.x) >= Math.abs(tilePos.x)){
 				this.reached = true;
 			}
+			this.direction = "right";
 		}
 		else if(direction.x < 0){	//going left
 			if(Math.abs(simulatedPos.x) <= Math.abs(tilePos.x)){
 				this.reached = true;
 			}
+			this.direction = "left";
 		}
 		else if(direction.y > 0){	//goin up
 			if(Math.abs(simulatedPos.y) >= Math.abs(tilePos.y)){
 				this.reached = true;
 			}
+			this.direction = "up";
 		}
 		else if(direction.y < 0){	//going down
 			if(Math.abs(simulatedPos.y) <= Math.abs(tilePos.y)){
 				this.reached = true;
 			}
+			this.direction = "down";
 		}
+
 		if(!this.reached){
 			this.pos.x = simulatedPos.x;
 			this.pos.y = simulatedPos.y;
@@ -1092,14 +1137,15 @@ class Player{
 
 
 				if(direction.y != 0){
-					console.log("moving vertically: "+direction.y);
+//					console.log("moving vertically: "+direction.y);
 				}
 				if(direction.x != 0){
-					console.log("moving horizontally: "+direction.x);
+//					console.log("moving horizontally: "+direction.x);
 				}
 
 				if(direction.x > 0){
 					direction.x = 1;
+
 				}
 				else if(direction.x < 0){
 					direction.x = -1;
@@ -1135,6 +1181,7 @@ class Player{
 		if(!this.server){
 			SetSpritePosition(this.sprite, pos);	//method on rendering
 			SetSpritePosition(this.border, pos);	//method on rendering
+			SetSpritePosition(this.base, pos);
 //			this.game.pWorld.render(game.canvas);
 		}
 		else{		
@@ -1147,18 +1194,20 @@ class Player{
 
 	CreateSprite(){
 		var cords = this.pos;
+		this.base = AddSprite('red', cords);
 		var sillhouetteBitMapData = createSillhouette('playerBorder');
 		this.border = game.add.sprite(cords.x*tileSize+tileSize/2,cords.y*tileSize+tileSize/2,sillhouetteBitMapData);
 		this.border.anchor.setTo(0.5); 
 		this.border.tint = rgb2hex(this.teamColor).replace("#", "0x");
 
 
-
 		if(this.isSelf){
 			this.serverSprite = AddSprite('blue', cords);
-			this.sprite = AddSprite('player', cords);
+			this.sprite = AddSprite('player', cords);	
+			this.base.visible = true;
 			this.sprite.visible = true;
 			this.serverSprite.visible = false;
+			this.base.anchor.setTo(0.5);
 			this.sprite.anchor.setTo(0.5);
 			this.serverSprite.anchor.setTo(0.5);
 			SetCameraTarget(this.sprite);
@@ -1168,10 +1217,57 @@ class Player{
 		else{
 			this.sprite = AddSprite('player', cords);
 		}
+			this.MakeLives();
 			this.sprite.angle = 0;
 			this.border.angle = 0;
 	}
 
+	MakeLives(){
+		if(typeof(this.lives) == "undefined"){
+			this.lives = [];
+			this.lives.push(this.base.addChild(game.make.sprite(-8-2, -16, 'life')));
+			this.lives.push(this.base.addChild(game.make.sprite(-4-2, -16, 'life')));
+			this.lives.push(this.base.addChild(game.make.sprite(0-2, -16, 'life')));
+			this.lives.push(this.base.addChild(game.make.sprite(4-2, -16, 'life')));
+			this.lives.push(this.base.addChild(game.make.sprite(8-2, -16, 'life')));
+		}
+		else{
+			for(var i = 0; i < this.lives.length; i++){
+				this.lives[i].visible = true;
+			}
+		}
+	}
+
+	RemoveLife(number){
+
+		var removed = 0;
+		for(var o = this.lives.length-1; o >= 0;o--){
+
+			if(removed == number){
+				break;
+			}			
+			if(this.lives[o].visible){
+				this.lives[o].visible = false;
+				removed++;
+			}
+		}
+	}
+
+
+	RecoverLife(number){
+
+		var recovered = 0;
+		for(var o = 0; o < this.lives.length; o++){
+
+			if(recovered == number){
+				break;
+			}
+			if(!this.lives[o].visible){
+				this.lives[o].visible = true;
+				recovered++;
+			}
+		}
+	}
 	RotateSprite(vector){
 		if(vector.x == -1){
 			this.sprite.angle = 270;
