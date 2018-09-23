@@ -260,7 +260,6 @@ class Map{
 	AddDrop(game, pos, type){
 
 		var type = type;
-
 		if(type >= 12 && type <= 15){
 			if(type < 14){
 				type = 5;
@@ -288,7 +287,7 @@ class Map{
 
 			this.AddPowerUp(game, pos, powerType);
 		}
-		else if(type >= 20 && type < 23){
+		else if(type > 20 && type < 23){
 			var tile = {};
 			tile.x = Math.trunc(pos.x);
 			tile.y = Math.trunc(pos.y);
@@ -400,8 +399,6 @@ class Map{
 		else if(value <= 100){
 			tile.type = 2;
 		}
-		
-//		tile.type = value;
 		if(tile.type == 0){
 			tile.hp = this.standardTileHp;
 		}

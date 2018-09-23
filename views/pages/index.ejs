@@ -47,12 +47,27 @@ user-select: none; /* Standard */
     }
 
     .PanelButton:hover{
-      background-color: firebrick;
+     background-color: firebrick;
     }
 
     .PanelButton:active{
       background-color: white;
     }
+
+.overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  width: 100%;
+  opacity: 0;
+  pointer-events: none;        
+border-radius: 50%;
+
+  background-color: dodgerblue;
+}    
 
     #playButton{
       top: 50%;
@@ -61,11 +76,20 @@ user-select: none; /* Standard */
     }
 
     #powerButton{
-      display: none;
-      min-height: 50px;
-      min-width: 50px;
+      display:none;
+      height: 100px;
+      width: 100px;
       bottom: 60px;
       right: 10px;
+    }
+
+    #powerButton:hover .overlay{
+      opacity: 0.5;
+    }
+
+    #powerButton:active .overlay{
+      background-color: white;
+      opacity : 1;
     }
 
     #tileButton{
@@ -161,7 +185,13 @@ user-select: none; /* Standard */
       margin: auto;
       padding: 0;
     }
+#powerImage {
+    max-width: 100%;
+    max-height: 100%;
+pointer-events: none;        
+border-radius: 50%;
 
+}
     #name{
       font: 16px Helvetica, Arial; 
       top: 25%;
@@ -203,7 +233,10 @@ user-select: auto; /* Standard */
     <script src="gameCore.js"></script>
   	<script src="client.js"></script>
 
-    <div id= "powerButton" class="Button" ></div>
+    <div id= "powerButton" class="Button" >
+      <img id= "powerImage" src="/Drill-1.png" >      
+      <div class = "overlay"> </div>
+    </div>
     <div id= "tileButton" class="Button" ></div>
     <div id= "rankingPanel" class="Panel" ></div>
     <div id= "panelContainer">

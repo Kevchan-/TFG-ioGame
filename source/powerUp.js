@@ -10,6 +10,7 @@ class PowerUp{
 		this.player = null;
 		this.taken = false;
 		this.type = type;
+
 		switch(this.type){
 			case 8:
 			console.log("Unstopable");
@@ -59,19 +60,26 @@ class PowerUp{
 			switch(this.type){
 				case 8:
 				this.timer = 7;	//reset timer, now its used for when player activates the powerup
+				if(!this.server)
+				document.getElementById('powerImage').src = "/Drill-1.png";
 				break;
 
 				case 9:
 				this.timer = 8;
+				if(!this.server)
+				document.getElementById('powerImage').src = "/Drill-3.png";				
 				break;
 
 				case 10:
+
 				this.timer = 14;
 				break;
 
 
 				case 11:
 				this.timer = 14;
+				if(!this.server)				
+				document.getElementById('powerImage').src = "/Drill-2.png";				
 				break;
 			}
 
@@ -117,6 +125,7 @@ class PowerUp{
 	Update(deltaTime){
 		if(!this.taken){	//not taken
 			if(!this.ended){
+
 //				console.log("updating "+ this.timer);
 				if(this.timer <= 0){
 					this.End();
@@ -146,7 +155,11 @@ class PowerUp{
 				} 
  			}
  			else{
-
+ 				if(!this.server){
+	 				if(shiftKey.isDown){
+	 					this.ProcessInput();
+	 				}
+	 			}
  			}
 		}
 	}

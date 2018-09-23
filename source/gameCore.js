@@ -430,12 +430,11 @@ class GameCore{
 					}
 					if(this.players[playerid].healthPoints > state[playerid].healthPoints){
 						var diff = this.players[playerid].healthPoints- state[playerid].healthPoints;
-						console.log(diff);
 							this.players[playerid].RemoveLife(diff);
 					}
 					else if(this.players[playerid].healthPoints < state[playerid].healthPoints){
 						var diff = state[playerid].healthPoints - this.players[playerid].healthPoints;
-						this.players[playerid].RecoverLife(diff);
+//						this.players[playerid].RecoverLife(diff);
 					}
 
 					if(this.players[playerid].healthPoints > state[playerid].healthPoints && state[playerid].lastPersonWhoHit != this.selfPlayer.id){

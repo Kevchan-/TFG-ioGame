@@ -101,6 +101,9 @@ class Player{
 
 	SetUpParameters(pos, id){
 
+		if(!this.server)
+		CreateKeys();
+
 		this.healthPoints = this.maxHealthPoints;
 		this.lastPersonWhoHit = null;
 
@@ -216,24 +219,40 @@ class Player{
 			var serverPos = latestUpdate[this.id].pos;
 
 
-//			var target;
-//			var previous;
-//			var deleteUntil = 0;
-//			console.log("ServerTime: "+serverTime);
-/*			for(var i = 0; i < buffer.length-1; i++){
-				console.log("BufferPosTimes: "+buffer[i].timeStamp+", "+buffer[i+1].timeStamp);
-				if(serverTime > buffer[i].timeStamp && serverTime <= buffer[i+1].timeStamp){
-					target = buffer[i+1];
-					previous = buffer[i];
-					deleteUntil = i;
-					break;
-				}
-			}*/
+			var target;
+			var previous;
+			var deleteUntil = 0;      
+      var now = new Date().getTime()/1000.0;
+	//		console.log("ServerTime: "+serverTime);
+      
+      var pos;
+  //    console.log("OldestTimes: "+this.positionBuffer[0].timeStamp+", "+this.positionBuffer[1].timeStamp);
+      if(serverTime < this.positionBuffer[0].timeStamp){
+          pos = this.positionBuffer[0].pos;
+      }
+      else if(serverTime > this.positionBuffer[this.positionBuffer.length-1].timeStamp){
+        pos = this.positionBuffer[this.positionBuffer.length-1];
+      }
+      else{
+        for(var i = 0; i < this.positionBuffer.length-1; i++){
+            
+
+          if(serverTime > this.positionBuffer[i].timeStamp && serverTime <= this.positionBuffer[i+1].timeStamp){
+            target = this.positionBuffer[i+1];
+            previous = this.positionBuffer[i];
+            deleteUntil = i;
+            break;
+          }
+        }
+        var pos = this.Interpolation(previous, target, serverTime);        
+      }
+
+//      console.log("Real Time: "+now);
 //			console.log("delete"+deleteUntil);
 
-			if(true){
+			if(target && previous){
 
-				var pos = buffer[buffer.length-1].pos;
+				
 				var auxPos = {x: this.pos.x, y: this.pos.y};
 //				console.log("AuxPos: "+auxPos.x+", "+auxPos.y);
   //     			console.log("SerPos: "+serverPos.x+", "+serverPos.y);
@@ -264,7 +283,7 @@ class Player{
 							this.ApplyInput(input);	
 
 							for(var j = 0; j < this.positionBuffer.length; j++){
-								if(buffer[j].inputSequence == input.sequenceNumber){
+								if(this.pendingInputs[j].inputSequence == input.sequenceNumber){
 									this.UpdatePhysics(buffer[j].deltaTime, true);
 								}
 							}
@@ -279,7 +298,27 @@ class Player{
 				}
 			}
 
-			this.positionBuffer.splice(0, this.positionBuffer-1);			
+			this.positionBuffer.splice(0, deleteUntil);			
+      
+      i = 0;
+      while(i < this.positionBuffer.length){
+          if(i == 0){
+    //        console.log("Sequences: "+serverSequence+", "+this.positionBuffer[i].inputSequence);
+          }        
+        if(this.positionBuffer[i].inputSequence < serverSequence){
+
+          this.positionBuffer.splice(0, 1);
+        }      
+        else{
+          break;
+        }
+      }
+      
+//      if(this.positionBuffer.length > 100){
+//        this.positionBuffer.splice(0, 100);
+//      }
+
+       // console.log(this.positionBuffer.length);        
 		}
 	}
 
@@ -658,6 +697,13 @@ class Player{
 			var reached = this.reached;
 			this.UpdatePhysics(deltaTime, false);
 
+      if(this.isSelf){
+        var now = new Date().getTime()/1000.0;
+        this.positionBuffer.push({pos: this.pos, timeStamp: now, deltaTime: deltaTime, inputSequence : (this.lastInputSequenceNumber-1)});
+
+//        console.log("newBuffer: "+ now);	
+      }		      
+      
 			if(this.reached){
 				if(!reached){
 					if(this.usingTileTrail){
@@ -744,13 +790,6 @@ class Player{
 				this.attackCoolDown = false;
 			}
 		}
-
-		if(this.isSelf && !recon){
-			var now = new Date().getTime()/1000.0;
-			this.positionBuffer.push({pos: this.pos, timeStamp: now, deltaTime: deltaTime, inputSequence : (this.lastInputSequenceNumber-1)});
-
-			console.log("pos:" +this.pos.x+", "+this.pos.y+", time: "+ now);	
-		}		
 	}
 
 	CreateTile(pos){
@@ -763,9 +802,17 @@ class Player{
 			}
 		}
 
+		var doit = true;
+		var posX = Math.floor(Math.abs(this.pos.x));
+		var posY = Math.floor(Math.abs(this.pos.y));
+
+		if(Math.abs(pos.x) == posX && Math.abs(pos.y) == posY){
+			doit = false;
+		}
+
 		var tile = {x: pos.x, y: pos.y, type: type, hp: hp};
 
-
+if(doit){
 		if(this.server){
 			this.game.map.ResetTile(tile, this.id);
 			this.points++;
@@ -809,6 +856,7 @@ class Player{
 			this.game.map.PutTile(tile.x, tile.y, tile.type, this.id);
 			this.points++;
 		}
+	}
 	}
 
 
@@ -1163,8 +1211,10 @@ class Player{
 				else{
 					direction.y = 0;
 				}
-			
-				this.RotateSprite(direction);
+				
+				if(direction.x != 0 || direction.y != 0){
+					this.RotateSprite(direction);
+				}
 			}
 		}
 
@@ -1200,11 +1250,11 @@ class Player{
 		this.border.anchor.setTo(0.5); 
 		this.border.tint = rgb2hex(this.teamColor).replace("#", "0x");
 
+			this.base.visible = true;
 
 		if(this.isSelf){
 			this.serverSprite = AddSprite('blue', cords);
 			this.sprite = AddSprite('player', cords);	
-			this.base.visible = true;
 			this.sprite.visible = true;
 			this.serverSprite.visible = false;
 			this.base.anchor.setTo(0.5);
@@ -1239,17 +1289,20 @@ class Player{
 	}
 
 	RemoveLife(number){
-
+		console.log("Remove: "+number);
 		var removed = 0;
-		for(var o = this.lives.length-1; o >= 0;o--){
 
-			if(removed == number){
-				break;
-			}			
-			if(this.lives[o].visible){
-				this.lives[o].visible = false;
-				removed++;
+		var pos = this.healthPoints-1;
+		for(var i = 0; i < number && pos> 0; i++){
+			pos = this.healthPoints-1- i;
+			if(pos >= 0){
+				this.lives[pos].visible = false;
 			}
+			console.log(pos);
+		}
+		while(pos < this.healthPoints){
+//			this.lives[pos].visible = false;
+			pos++
 		}
 	}
 

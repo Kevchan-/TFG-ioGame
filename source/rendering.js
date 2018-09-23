@@ -13,7 +13,7 @@ var upKey;
 var downKey;
 var leftKey;
 var rightKey;
-var spaceKey;
+var newSpaceKey;
 var backKey;
 var controlKey;
 
@@ -44,14 +44,6 @@ function Create () {
     spriteBatch = game.add.spriteBatch();
     game.stage.backgroundColor = "#45311D";
     game.stage.smoothed = false;
-
-    upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
-    downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
-    leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
-    rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
-    spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACE);
-    controlKey = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
-    shiftKey = game.input.keyboard.addKey(Phaser.Keyboard.SHIFT);
     
     game.scale.scaleMode = Phaser.ScaleManager.SHOW_ALL;
   //  game.scale.scaleMode = Phaser.ScaleManager.USER_SCALE;
@@ -61,6 +53,17 @@ function Create () {
     game.renderer.renderSession.roundPixels = true;
     Phaser.Canvas.setImageRenderingCrisp(game.canvas);
 }
+
+function CreateKeys(){
+    upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
+    downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
+    leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
+    rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+    newSpaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACE);
+    controlKey = game.input.keyboard.addKey(Phaser.Keyboard.CONTROL);
+    shiftKey = game.input.keyboard.addKey(Phaser.Keyboard.SHIFT);    
+}
+
 
 function CreateEmitter(which){
     if(which == 1){

@@ -42,7 +42,7 @@ class GameRoom{
 		"#9c9100", "#703467", "#b37272", "#5aa61f", "#8e00c2", "#0c0075", "#ff8040", "#f3a3ff", "#7a4312", "#ff00d9", 
 		"#802626", "#e3a300", "#60e851", "#7091ba", "#b05720", "#597322", "#35525e", "#808080", "#ff99c9", "#520d3c",
 		"#2f48ad", "#875be8", "#604c7d", "#a18d62", "#4d539e", "#f2d491", "#f04d8b", "#8affc4", "#cc1414"];
-		shuffleArray(preColors);		
+//		shuffleArray(preColors);		
 		var colors = ["#FFFFFF"].concat(preColors);
 
 
